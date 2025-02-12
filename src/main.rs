@@ -1,3 +1,5 @@
+mod dom;
+
 fn main() {
-    println!("Hello, world!");
+    dom::example_dom();
 }
