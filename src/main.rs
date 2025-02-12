@@ -1,5 +1,5 @@
-mod dom;
+mod lib;
 
 fn main() {
-    dom::example_dom();
+    lib::test();
 }
