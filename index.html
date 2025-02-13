@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Reader</title>
+</head>
+<body>
+    <input type="file" id="fileInput">
+    <pre id="output"> "A"</pre>
+    <script type="module">
+        import init, { State } from "./pkg/cure_web.js";
+
+        await init(); // Initialize the WebAssembly module
+            const fileInput = document.getElementById("fileInput");
+            const output = document.getElementById("output");
+
+            fileInput.addEventListener("change", async function (event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const arrayBuffer = e.target.result;
+                const uint8Array = new Uint8Array(arrayBuffer);
+
+                // Convert each byte to a two-character hex representation
+                const hexString = [...uint8Array]
+                    .map(byte => byte.toString(16).padStart(2, "0").toUpperCase()) // Convert to uppercase hex
+                    .join(""); // Join into a single string
+
+                try {
+                    const state = new State(hexString); // Pass hex string to WASM
+                    output.textContent = state.get_tree_data();
+                } catch (err) {
+                    output.textContent = "Error processing WASM module: " + err;
+                }
+            };
+            reader.onerror = function (e) {
+                output.textContent = "Error reading file: " + e.target.error;
+            };
+
+            reader.readAsArrayBuffer(file);  // ✅ Use ArrayBuffer for raw binary
+        });
+
+        
+    </script>
+</body>
+</html>
