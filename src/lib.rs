@@ -1,8 +1,8 @@
-use std::{collections::HashMap, fs};
+use std::fs;
 use chrono::Utc;
 use regex::Regex;
 use wasm_bindgen::prelude::*;
-use cure_asn1::tree_parser::{Tree};
+use cure_asn1::tree_parser::Tree;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Node{
@@ -57,50 +57,94 @@ pub fn example_dom(){
     fs::write("./nodes.json", s).unwrap();
 }
 
+fn is_hex(s: &str) -> bool {
+    let hex_regex = Regex::new(r"^(?:[0-9A-Fa-f]{2})+$").unwrap();
+    hex_regex.is_match(s)
+}
+
+fn is_base64(s: &str) -> bool {
+    let base64_regex = Regex::new(r"^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$").unwrap();
+    base64_regex.is_match(s)
+}
+
 #[wasm_bindgen]
 pub struct State{
-    tree: String, // Need this indirection over String because otherwise Tree would have to implement all the wasm functionality which is a pain
+    tree: Tree, 
 }
 
 #[wasm_bindgen]
 impl State{
+    #[wasm_bindgen(constructor)]
+    pub fn new(data: String) -> Result<State, String>{
+        // Takes either hex or base64 encoded data is input
+
+        let mut data = data.trim().to_string();
+        if data.starts_with("0x"){
+            data = data[2..].to_string();
+        }
+
+        if is_hex(&data) == false && is_base64(&data) == false{
+            return Err("Invalid data".to_string());
+        }
+
+        let decoded;
+        if is_hex(&data){
+            decoded = hex::decode(&data).map_err(|_| "Invalid hex data".to_string());
+        }
+        else{
+            decoded = base64::decode(&data).map_err(|_| "Invalid base64 data".to_string());
+        }
+
+        if decoded.is_err(){
+            return Err(decoded.err().unwrap());
+        }
+
+        let tree = cure_asn1::interface::parse_tree(&decoded.unwrap(), "");
+
+        if tree.is_none(){
+            return Err("Invalid data".to_string());
+        }
+
+        Ok(State{
+            tree: tree.unwrap(),
+        })
+    }
+
+
     #[wasm_bindgen]
     pub fn get_nodes(&self) -> String{
-        let tree = serde_json::from_str(&self.tree).unwrap();
-        let nodes = encode_tree(&tree);
+        let nodes = encode_tree(&self.tree);
         serde_json::to_string(&nodes).unwrap().clone()
     }
 
     #[wasm_bindgen]
     pub fn add_node(&mut self, typ: u8, value: String, parent: usize) -> Result<(), String>{
-        let mut tree: Tree = serde_json::from_str(&self.tree).unwrap();
         let val = val_to_bytes(typ, value)?;
         
-        tree.add_node(typ, val, parent, None);
-        self.tree = serde_json::to_string(&tree).unwrap();
+        self.tree.add_node(typ, val, parent, None);
         Ok(())
     }
 
     #[wasm_bindgen]
     pub fn adapt_node_content(&mut self, id: usize, new_content: String) -> Result<(), String>{
-        let mut tree: Tree = serde_json::from_str(&self.tree).unwrap();
-        let val = val_to_bytes(tree.tokens[&id].visual_tag[0], new_content.clone())?;
-        tree.tokens.get_mut(&id).unwrap().data = val;
-        self.tree = serde_json::to_string(&tree).unwrap();
+        let val = val_to_bytes(self.tree.tokens[&id].visual_tag[0], new_content.clone())?;
+        self.tree.tokens.get_mut(&id).unwrap().data = val;
         Ok(())
     }
 
     #[wasm_bindgen]
     pub fn remove_node(&mut self, id: usize) -> Result<(), String>{
-        let mut tree: Tree = serde_json::from_str(&self.tree).unwrap();
-        tree.deep_delete(id);
-        self.tree = serde_json::to_string(&tree).unwrap();
+        self.tree.deep_delete(id);
         Ok(())
+    }
+
+    #[wasm_bindgen]
+    pub fn get_tree_data(&self) -> String{
+        format!("{:?}", self.tree).to_string()
     }
 }
 
 fn val_to_bytes(typ: u8, value: String) -> Result<Vec<u8>, String>{
-    // let typ = typ & !32; 
     match typ{
         0x01 => { // Boolean
             let v = value.parse::<u8>();
@@ -275,8 +319,11 @@ fn in_to_byt(inp: i64) -> Vec<u8> {
 }
 
 pub fn test(){
-    let val = "1".to_string();
-    println!("{:?}", val_to_bytes(3, val));
+    let s = fs::read("example.roa").unwrap();
+    let s = "0x".to_string() + &hex::encode(&s);
+
+    let state = State::new(s).unwrap();
+    println!("{}", state.tree.obj_type);
 }
 
 
