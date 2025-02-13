@@ -12,11 +12,8 @@
         import init, { State } from "./pkg/cure_web.js";
 
         await init(); // Initialize the WebAssembly module
-
-
             const fileInput = document.getElementById("fileInput");
             const output = document.getElementById("output");
-            output.textContent = "helloooo3";
 
             fileInput.addEventListener("change", async function (event) {
             const file = event.target.files[0];
@@ -35,7 +32,6 @@
                 try {
                     const state = new State(hexString); // Pass hex string to WASM
                     output.textContent = state.get_tree_data();
-                    // output.textContent = "helloo3oo";
                 } catch (err) {
                     output.textContent = "Error processing WASM module: " + err;
                 }
