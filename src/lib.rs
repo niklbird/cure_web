@@ -119,6 +119,10 @@ impl State{
 
     #[wasm_bindgen]
     pub fn add_node(&mut self, typ: u8, value: String, parent: usize) -> Result<(), String>{
+        if self.tree.tokens.get(&parent).is_none(){
+            return Err("Invalid parent".to_string());
+        }
+
         let val = val_to_bytes(typ, value)?;
         
         self.tree.add_node(typ, val, parent, None);
@@ -322,8 +326,9 @@ pub fn test(){
     let s = fs::read("example.roa").unwrap();
     let s = "0x".to_string() + &hex::encode(&s);
 
-    let state = State::new(s).unwrap();
-    println!("{}", state.tree.obj_type);
+    let mut state = State::new(s).unwrap();
+    state.add_node(2, "2".to_string(), 0).unwrap();
+    println!("{}", base64::encode(state.tree.encode()));
 }
 
 
