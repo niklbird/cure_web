@@ -1,6 +1,7 @@
 <template>
     <span
         :class="(node.id == selected ? 'highlighted' : '')"
+        ref="span"
     >
         <span
             v-if="node.tag"
@@ -38,6 +39,7 @@
             :tree="tree"
             :node="nodeFromId(nodeId)"
             :selected="selected"
+            @position="(id, top, height) => $emit('position', id, top, height)"
         ></ByteNode>
     </span>
 </template>
@@ -49,6 +51,7 @@ export default {
         node: Object,
         selected: Number
     },
+    emits: ["position"],
     methods: {
         nodeFromId: function(id) {
             let candidates = this.tree.filter((node) => node.id == id)
@@ -64,6 +67,12 @@ export default {
         dec2hex: function (i) {
             return (i+0x10000).toString(16).substr(-2).toUpperCase();
         },
+    },
+    mounted: function () {
+        const target = this.$refs.span
+        const targetRect = target.getBoundingClientRect();
+
+        this.$emit("position", this.node.id, targetRect.top, target.clientHeight)
     }
 }
 

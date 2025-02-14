@@ -1,26 +1,5 @@
 <template>
     <v-overlay
-        v-model="uploadFile"
-        style="justify-content: center; align-content: center"
-    >
-        <v-card class="pa-4" outlined>
-            <v-card-title>Upload File</v-card-title>
-            <v-card-text>
-            <div
-                class="drop-zone"
-                @dragover.prevent
-                @dragenter.prevent
-                @drop="handleDrop"
-            >
-                <input type="file" ref="fileInput" hidden @change="handleFileSelect" />
-                <v-btn @click="openFileExplorer" color="primary">Choose File</v-btn>
-                <p v-if="selectedFile">Selected file: {{ selectedFile.name }}</p>
-                <p v-else>Drag and drop a file here or click to select one.</p>
-            </div>
-            </v-card-text>
-        </v-card>
-    </v-overlay>
-    <v-overlay
         v-model="addElement"
         style="justify-content: center; align-content: center"
     >
@@ -92,8 +71,48 @@
         </v-card>
     </v-overlay>
     <v-container
-        fluid
+        v-if="state === null"
+        style="justify-content: center; align-content: center"
     >
+        <h1>Upload file</h1>
+        <div
+            class="border-2 border-dashed border-gray-300 p-6 rounded-lg text-center cursor-pointer"
+            @dragover.prevent="dragOver = true"
+            @dragleave.prevent="dragOver = false"
+            @drop.prevent="handleDrop"
+            @click="triggerFileInput"
+            :class="{ 'hovered': dragOver }"
+            style="display: flex; justify-content: center; align-items: center; height: 50vh;"    
+        >
+            <span class="text-gray-500">
+                Drag & drop files here or click to browse
+                <div v-if="file" class="mt-4">
+                    <span class="text-gray-700" style="vertical-align:middle">{{ file.name }}</span>
+                </div>
+            </span>
+            <input type="file" ref="fileInput" class="hidden" @change="handleFileSelect" />
+        </div>
+        <v-btn @click=uploadFile class="ma-2">Upload</v-btn>
+    </v-container>
+    <v-container
+        v-if="state !== null"
+        fluid
+        max-height="100vh"
+        max-width="100vw"
+    >
+        <v-row>
+            <v-btn
+                @click="state = null; file = null"
+                class="ma-2"
+            >
+                Load new file
+            </v-btn>
+            <v-btn
+                class="ma-2"
+            >
+                Save changed file
+            </v-btn>
+        </v-row>
         <v-row>
             <v-col
                 cols="8"
@@ -102,9 +121,9 @@
                 <TreeNode 
                     :tree="tree"
                     :node="findRoot()"
-                    @highlight="(id) => highlightId = id"
+                    @highlight="(id) => highlightBytes(id)"
                     @delete="(id) => deleteNode(id)"
-                    @change="(id, tag, value) => updateNode(id, tag, value)"
+                    @change="(id, value) => updateNode(id, value)"
                     @add="(id) => { addElement = true; addElementId = id }"
                 />
             </div>
@@ -112,12 +131,13 @@
             <v-col
                 cols="4"
             >
-                <div class="bytes" style="position:sticky">
+                <div class="bytes" ref="bytes">
                     <p>
                         <ByteNode
                             :tree="tree"
                             :node="findRoot()"
                             :selected="highlightId"
+                            @position="(id, top, height) => addPosition(id, top, height)"
                         ></ByteNode>
                     </p>
                 </div>
@@ -128,6 +148,7 @@
 
 <script>
 import { asn1Types } from '@/utils/parse'
+import init, { State } from '@/rust/cure_web.js'
 import ByteNode from '@/components/ByteNode.vue'
 import TreeNode from '@/components/TreeNode.vue'
 
@@ -142,7 +163,10 @@ export default {
         addElementId: -1,
         type: null,
         content: "",
-        uploadFile: ""
+        state: null,
+        file: null,
+        dragOver: false,
+        bytePosition: {}
     };
   },
   components: {
@@ -150,21 +174,44 @@ export default {
     TreeNode
   },
   methods: {
-    handleFileSelect: function (event) {
-        const files = event.target.files;
-        if (files.length) {
-            this.$refs.selectedFile.value = files[0];
-        }  
+    uploadFile: function () {
+        const reader = new FileReader();
+        const that = this
+        reader.onload = function (e) {
+            const arrayBuffer = e.target.result;
+            const uint8Array = new Uint8Array(arrayBuffer);
+
+            // Convert each byte to a two-character hex representation
+            const hexString = [...uint8Array]
+                .map(byte => byte.toString(16).padStart(2, "0").toUpperCase()) // Convert to uppercase hex
+                .join(""); // Join into a single string
+
+            try {
+                that.state = new State(hexString); // Pass hex string to WASM
+                that.tree = JSON.parse(that.state.get_nodes())
+            } catch (err) {
+                console.log("Error processing WASM module: " + err)
+            }
+        };
+        reader.onerror = function (e) {
+            console.log("Error reading file: " + e.target.error)
+        };
+
+        reader.readAsArrayBuffer(this.file);  // Use ArrayBuffer for raw binary
     },
-    openFileExplorer: function () {
-        this.$refs.fileInput.value.click()
+    triggerFileInput: function () {
+        this.$refs.fileInput.click()
+    },
+    handleFileSelect: function (event) {
+        const selectedFile = event.target.file
+        this.file = selectedFile
     },
     handleDrop: function(event) {
-        const files = event.dataTransfer.files;
-        if (files.length) {
-            this.$refs.selectedFile.value = files[0];
-        }        
+        this.dragOver = false;
+        const droppedFile = Array.from(event.dataTransfer.files)[0]
+        this.file = droppedFile
     },
+
     findRoot: function () {
         const candidates = this.tree.filter((node) => node.id == node.parent)
         if (candidates.length > 0) {
@@ -175,330 +222,54 @@ export default {
             }
         }
     },
+    addPosition: function(id, top, height) {
+        this.bytePosition[id] = [top, height]
+    },
     addNode: function (type, value) {
         if (!Object.prototype.hasOwnProperty.call(this.types[type], "rules") || this.types[type]["rules"](value)) {
+            this.state.add_node(type, value, this.addElementId)
+            this.tree = JSON.parse(this.state.get_nodes())
             this.addElement = false
         } else {
             alert(value + " is not a legal value for a field of type " + this.types[type]["name"] + "\n If you intend to use an invalid value submit the value in hex notation.")
         }
     },
-    updateNode: function (id, tag, value) {
-        console.log("changeNode", id, tag, value)
+    updateNode: function (id, value) {
+        this.state.adapt_node_content(id, value)
+        this.tree = JSON.parse(this.state.get_nodes())
     },
     deleteNode: function (id) {
-        console.log("deleteNode", id)
+        this.state.remove_node(id)
+        this.tree = JSON.parse(this.state.get_nodes())
     },
     setIndices: function (id) {
         this.highlightId = id
     },
-    fetchTree: async function() {
-        try {
-            const response = await fetch("https://api.example.com/data");
-            const data = await response.json();
-            this.tree = data.value; // Adjust based on API response structure
-        } catch (error) {
-            this.tree = [
-                {
-                    "id": 0,
-                    "tag": [
-                    48,
-                    "contentInfo  SEQUENCE ",
-                    [
-                        48
-                    ]
-                    ],
-                    "length": [
-                    2124,
-                    "(2 nodes)",
-                    [
-                        130,
-                        8,
-                        76
-                    ]
-                    ],
-                    "content": [
-                    "",
-                    "",
-                    []
-                    ],
-                    "children": [
-                    1,
-                    2
-                    ],
-                    "parent": 0
-                },
-                {
-                    "id": 1,
-                    "tag": [
-                    6,
-                    "contentType  OBJECT IDENTIFIER ",
-                    [
-                        6
-                    ]
-                    ],
-                    "length": [
-                    9,
-                    "",
-                    [
-                        9
-                    ]
-                    ],
-                    "content": [
-                    "1.2.840.113549.1.7.2",
-                    "1.2.840.113549.1.7.2",
-                    [
-                        42,
-                        134,
-                        72,
-                        134,
-                        247,
-                        13,
-                        1,
-                        7,
-                        2
-                    ]
-                    ],
-                    "children": [],
-                    "parent": 0
-                },
-                {
-                    "id": 2,
-                    "tag": [
-                    160,
-                    "content  [implicit]",
-                    [
-                        160
-                    ]
-                    ],
-                    "length": [
-                    2109,
-                    "(1 nodes)",
-                    [
-                        130,
-                        8,
-                        61
-                    ]
-                    ],
-                    "content": [
-                    "",
-                    "",
-                    []
-                    ],
-                    "children": [
-                    3
-                    ],
-                    "parent": 0
-                },
-                {
-                    "id": 3,
-                    "tag": [
-                    48,
-                    "signedData  SEQUENCE ",
-                    [
-                        48
-                    ]
-                    ],
-                    "length": [
-                    2105,
-                    "(5 nodes)",
-                    [
-                        130,
-                        8,
-                        57
-                    ]
-                    ],
-                    "content": [
-                    "",
-                    "",
-                    []
-                    ],
-                    "children": [
-                    4,
-                    5,
-                    8,
-                    21,
-                    110
-                    ],
-                    "parent": 2
-                },
-                {
-                    "id": 4,
-                    "tag": [
-                    2,
-                    "version  INTEGER ",
-                    [
-                        2
-                    ]
-                    ],
-                    "length": [
-                    1,
-                    "",
-                    [
-                        1
-                    ]
-                    ],
-                    "content": [
-                    "3",
-                    "3",
-                    [
-                        3
-                    ]
-                    ],
-                    "children": [],
-                    "parent": 3
-                },
-                {
-                    "id": 5,
-                    "tag": [
-                    49,
-                    "digestAlgorithmsSet  SET ",
-                    [
-                        49
-                    ]
-                    ],
-                    "length": [
-                    13,
-                    "(1 nodes)",
-                    [
-                        13
-                    ]
-                    ],
-                    "content": [
-                    "",
-                    "",
-                    []
-                    ],
-                },
-                {
-                    "id": 6,
-                    "tag": [
-                    48,
-                    "digestAlgorithmSeq  SEQUENCE ",
-                    [
-                        48
-                    ]
-                    ],
-                    "length": [
-                    11,
-                    "(1 nodes)",
-                    [
-                        11
-                    ]
-                    ],
-                    "content": [
-                    "",
-                    "",
-                    []
-                    ],
-                    "children": [
-                    7
-                    ],
-                    "parent": 5
-                },
-                {
-                    "id": 7,
-                    tag: [
-                    6,
-                    "digestAlgorithm  OBJECT IDENTIFIER ",
-                    [
-                        6
-                    ]
-                    ],
-                    "length": [
-                    9,
-                    "",
-                    [
-                        9
-                    ]
-                    ],
-                    "content": [
-                    "2.16.840.1.101.3.4.2.1",
-                    "2.16.840.1.101.3.4.2.1",
-                    [
-                        96,
-                        134,
-                        72,
-                        1,
-                        101,
-                        3,
-                        4,
-                        2,
-                        1
-                    ]
-                    ],
-                    "children": [],
-                    "parent": 6
-                },
-                {
-                    "id": 8,
-                    "tag": [
-                    48,
-                    "encapsulatedContentInfo  SEQUENCE ",
-                    [
-                        48
-                    ]
-                    ],
-                    "length": [
-                    44,
-                    "(2 nodes)",
-                    [
-                        44
-                    ]
-                    ],
-                    "content": [
-                    "",
-                    "",
-                    []
-                    ],
-                    "children": [
-                    9,
-                    10
-                    ],
-                    "parent": 3
-                },
-                {
-                    "id": 9,
-                    "tag": [
-                    6,
-                    "eContentType  OBJECT IDENTIFIER ",
-                    [
-                        6
-                    ]
-                    ],
-                    "length": [
-                    11,
-                    "",
-                    [
-                        11
-                    ]
-                    ],
-                    "content": [
-                    "1.2.840.113549.1.9.16.1.24",
-                    "1.2.840.113549.1.9.16.1.24",
-                    [
-                        42,
-                        134,
-                        72,
-                        134,
-                        247,
-                        13,
-                        1,
-                        9,
-                        16,
-                        1,
-                        24
-                    ]
-                    ],
-                    "children": [],
-                    "parent": 8
-                }
-                ]
+    highlightBytes: function (id) {
+        this.highlightId = id
+
+        if (!Object.prototype.hasOwnProperty.call(this.bytePosition, id)) {
+            return
         }
+
+        const byteContainer = this.$refs.bytes
+        // Get positions
+        const containerRect = byteContainer.getBoundingClientRect();
+
+        // Calculate scroll position to center the target
+        const scrollTop = byteContainer.scrollTop + (this.bytePosition[id][0] - containerRect.top) - (byteContainer.clientHeight / 2) + (this.bytePosition[id][1] / 2);
+
+        // Smooth scrolling
+        console.log(this.bytePosition[id])
+        console.log(byteContainer.scrollTop, containerRect.top, byteContainer.clientHeight)
+        byteContainer.scrollTo({ top: scrollTop, behavior: 'smooth' });
     }
   },
+  async beforeCreate() {
+    await init()
+  },
   mounted() {
-    this.fetchTree(); // Fetch immediately
-    // this.intervalId = setInterval(this.fetchTree, 5000); // Fetch every 5 seconds
+    // this.tree = this.state.get_nodes()
   },
   beforeUnmount() {
     // clearInterval(this.intervalId); // Clear interval when component is destroyed
@@ -509,6 +280,7 @@ export default {
 <style scoped>
 .bytes {
   width: 100%;
+  height: 80vh;
   background-color: #282c34; /* Dark background for contrast */
   display: flex;
   align-items: start;
@@ -517,7 +289,7 @@ export default {
   font-size: 1.3rem; /* Increased font size */
   padding: 20px;
   text-align: left;
-  overflow: auto; /* Scroll if text overflows */
+  overflow: scroll; /* Scroll if text overflows */
 }
 
 .space {
@@ -545,4 +317,11 @@ text-align: left;
   background-color: #f9f9f9;
 }
 
+.hidden {
+  display: none;
+}
+
+.hovered {
+    background-color: rgba(255, 255, 255, 0.1)
+}
 </style>

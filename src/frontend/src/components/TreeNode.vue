@@ -42,7 +42,7 @@
                 @highlight="(id) => $emit('highlight', id)"
                 @add="(id) => $emit('add', id)"
                 @delete="(id) => $emit('delete', id)"
-                @change="(id, tag, value) => $emit('change', id, tag, value)"
+                @change="(id, value) => $emit('change', id, value)"
             />
             <div class="tree-node">
                 <div class="node-header">
@@ -71,6 +71,7 @@
 
 <script>
 import { nextTick } from "vue";
+import { asn1Types } from "@/utils/parse";
 
 export default {
 props: {
@@ -116,10 +117,14 @@ methods: {
         if (this.editing) {
             await nextTick();
             this.$refs.input.focus()
-            this.$refs.input.value = this.node.content
+            this.$refs.input.value = this.node.content[2]
         } else {
-            if (this.$refs.input.value != this.node.content) {
-                this.$emit("change", this.node.id, this.$refs.input.value)
+            if (this.$refs.input.value != this.node.content[2]) {
+                if (asn1Types[this.node.tag[0]]["rules"](this.$refs.input.value)) {
+                    this.$emit("change", this.node.id, this.$refs.input.value)
+                } else {
+                    alert("Invalid value " + this.$refs.input.value + " for field of type " + this.node.tag[1] + "\nIf you intended to input an invalid value please use hex notation (0x...)")
+                }
                 // On change we should either emit an event that triggers recomputation, or just do it from here
             }
         }
@@ -179,5 +184,6 @@ padding-left: 10px;
   padding: 5px;
   border: 1px solid transparent;
 }
+
 </style>
   
