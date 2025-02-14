@@ -9,9 +9,11 @@ specifiers:
   '@vue/cli-plugin-router': ~5.0.0
   '@vue/cli-plugin-vuex': ~5.0.0
   '@vue/cli-service': ~5.0.0
+  asn2json: ^0.0.2
   core-js: ^3.8.3
   eslint: ^7.32.0
   eslint-plugin-vue: ^8.0.3
+  fs: 0.0.1-security
   roboto-fontface: '*'
   vue: ^3.2.13
   vue-cli-plugin-vuetify: ~2.5.8
@@ -23,7 +25,9 @@ specifiers:
 
 dependencies:
   '@mdi/font': 5.9.55
+  asn2json: 0.0.2
   core-js: 3.40.0
+  fs: 0.0.1-security
   roboto-fontface: 0.10.0
   vue: 3.5.13
   vue-router: 4.5.0_vue@3.5.13
@@ -2393,6 +2397,12 @@ packages:
     engines: {node: '>=8'}
     dev: true
 
+  /asn2json/0.0.2:
+    resolution: {integrity: sha512-44Kznnb71FKX34ZFr/1FmHjmjVFYTe0LMWnhrdWx04cFOfOa9YlccpkPKSho3iX6Ng5zgq4FwbMmYG3+PskDDQ==}
+    dependencies:
+      pegjs: 0.10.0
+    dev: false
+
   /astral-regex/2.0.0:
     resolution: {integrity: sha512-Z7tMw1ytTXt5jqMcOP+OQteU1VuNK9Y02uuJtKQ1Sv69jXQKKg5cibLwGJow8yzZP+eAc18EmLGPal0bp36rvQ==}
     engines: {node: '>=8'}
@@ -4027,6 +4037,10 @@ packages:
     resolution: {integrity: sha512-OO0pH2lK6a0hZnAdau5ItzHPI6pUlvI7jMVnxUQRtw4owF2wk8lOSabtGDCTP4Ggrg2MbGnWO9X8K1t4+fGMDw==}
     dev: true
 
+  /fs/0.0.1-security:
+    resolution: {integrity: sha512-3XY9e1pP0CVEUCdj5BmfIZxRBTSDycnbqhIOGec9QYtmVH2fbLpj86CFWkrNOkt/Fvty4KZG5lTglL9j/gJ87w==}
+    dev: false
+
   /fsevents/2.3.3:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
@@ -5299,6 +5313,12 @@ packages:
     resolution: {integrity: sha512-gDKb8aZMDeD/tZWs9P6+q0J9Mwkdl6xMV8TjnGP3qJVJ06bdMgkbBlLU8IdfOsIsFz2BW1rNVT3XuNEl8zPAvw==}
     engines: {node: '>=8'}
     dev: true
+
+  /pegjs/0.10.0:
+    resolution: {integrity: sha512-qI5+oFNEGi3L5HAxDwN2LA4Gg7irF70Zs25edhjld9QemOgp0CbvMtbFcMvFtEo1OityPrcCzkQFB8JP/hxgow==}
+    engines: {node: '>=0.10'}
+    hasBin: true
+    dev: false
 
   /picocolors/0.2.1:
     resolution: {integrity: sha512-cMlDqaLEqfSaW8Z7N5Jw+lyIW869EzT73/F5lhtY9cLGoVxSXznfgfXMO0Z5K0o0Q2TkTXq+0KFsdnSe3jDViA==}
