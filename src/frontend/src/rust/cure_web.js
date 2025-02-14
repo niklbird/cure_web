@@ -2,7 +2,7 @@ let wasm;
 
 const cachedTextDecoder = (typeof TextDecoder !== 'undefined' ? new TextDecoder('utf-8', { ignoreBOM: true, fatal: true }) : { decode: () => { throw Error('TextDecoder not available') } } );
 
-if (typeof TextDecoder !== 'undefined') { cachedTextDecoder.decode(); }
+if (typeof TextDecoder !== 'undefined') { cachedTextDecoder.decode(); };
 
 let cachedUint8ArrayMemory0 = null;
 
@@ -80,7 +80,9 @@ function takeFromExternrefTable0(idx) {
     return value;
 }
 
-const StateFinalization = { register: () => {}, unregister: () => {} };
+const StateFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_state_free(ptr >>> 0, 1));
 
 export class State {
 
@@ -217,6 +219,7 @@ function __wbg_get_imports() {
         table.set(offset + 1, null);
         table.set(offset + 2, true);
         table.set(offset + 3, false);
+        ;
     };
     imports.wbg.__wbindgen_string_new = function(arg0, arg1) {
         const ret = getStringFromWasm0(arg0, arg1);
@@ -230,8 +233,7 @@ function __wbg_get_imports() {
 }
 
 function __wbg_init_memory(imports, memory) {
-    imports
-    memory
+
 }
 
 function __wbg_finalize_init(instance, module) {
