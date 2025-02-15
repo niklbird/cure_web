@@ -118,17 +118,46 @@ impl State{
     }
 
     #[wasm_bindgen]
-    pub fn add_node(&mut self, typ: u8, value: String, parent: usize) -> Result<(), String>{
+    pub fn add_node(&mut self, typ: u8, value: String, parent: usize, label: String) -> Result<(), String>{
+        if self.tree.tokens.get(&parent).is_none(){
+            return Err("Invalid parent".to_string());
+        }
+
         let val = val_to_bytes(typ, value)?;
         
-        self.tree.add_node(typ, val, parent, None);
+        let label = if label.len() == 0{
+            None
+        }
+        else{
+            Some(label)
+        };
+
+        self.tree.add_node(typ, val, parent, label);
         Ok(())
     }
 
     #[wasm_bindgen]
     pub fn adapt_node_content(&mut self, id: usize, new_content: String) -> Result<(), String>{
-        let val = val_to_bytes(self.tree.tokens[&id].visual_tag[0], new_content.clone())?;
+        let val = val_to_bytes(self.tree.tokens[&id].tag_u, new_content.clone())?;
         self.tree.tokens.get_mut(&id).unwrap().data = val;
+        self.tree.tokens.get_mut(&id).unwrap().manipulated = true;
+        Ok(())
+    }
+
+    #[wasm_bindgen]
+    pub fn adapt_node_length(&mut self, id: usize, new_length: usize) -> Result<(), String>{
+        self.tree.tokens.get_mut(&id).unwrap().visual_length = new_length;
+        self.tree.tokens.get_mut(&id).unwrap().manipulated_length = true;
+        self.tree.tokens.get_mut(&id).unwrap().manipulated = true;
+
+        Ok(())
+    }
+
+    #[wasm_bindgen]
+    pub fn adapt_node_tag(&mut self, id: usize, tag: u8) -> Result<(), String>{
+        self.tree.tokens.get_mut(&id).unwrap().visual_tag = vec![tag];
+        self.tree.tokens.get_mut(&id).unwrap().manipulated = true;
+
         Ok(())
     }
 
@@ -322,8 +351,10 @@ pub fn test(){
     let s = fs::read("example.roa").unwrap();
     let s = "0x".to_string() + &hex::encode(&s);
 
-    let state = State::new(s).unwrap();
-    println!("{}", state.tree.obj_type);
+    let mut state = State::new(s).unwrap();
+    state.add_node(2, "2".to_string(), 0, "".to_string()).unwrap();
+    state.adapt_node_tag(0, 43).unwrap();
+    println!("{}", base64::encode(state.tree.encode()));
 }
 
 
