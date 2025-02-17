@@ -7,6 +7,7 @@ use cure_asn1::tree_parser::Tree;
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Node{
     pub id: usize,
+    pub label: String, 
     pub tag: (u8, String, Vec<u8>), // Value, Display Value, Binary Value
     pub length: (usize, String, Vec<u8>), 
     pub content: (String, String, Vec<u8>), 
@@ -19,8 +20,9 @@ pub fn encode_node(tree: &Tree, node_id: usize) -> Vec<Node>{
     let mut nodes = vec![];
 
     let token = &tree.tokens[&node_id];
-    let (tag, length, content) = token.to_string_pretty();
+    let (label, tag, length, content) = token.to_string_pretty();
     let node = Node{
+        label,
         id: node_id,
         tag,
         length,
@@ -41,22 +43,6 @@ pub fn encode_tree(tree: &Tree) -> Vec<Node>{
     encode_node(tree, tree.root_id)
 }
 
-pub fn print_node(node: &Node){
-    println!("{}  {}  {}", node.tag.1, node.length.1, node.content.1);
-}
-
-
-pub fn example_dom(){
-    let roa_raw = fs::read("example.roa").unwrap();
-    let roa_con = cure_asn1::rpki::parse_rpki_object(&roa_raw, &cure_asn1::rpki::ObjectType::ROA);
-    let tree = roa_con.unwrap().content;
-    let nodes = encode_tree(&tree);
-    let reduced = nodes[0..10].to_vec();
-
-    let s = serde_json::to_string(&reduced).unwrap();
-    fs::write("./nodes.json", s).unwrap();
-}
-
 fn is_hex(s: &str) -> bool {
     let hex_regex = Regex::new(r"^(?:[0-9A-Fa-f]{2})+$").unwrap();
     hex_regex.is_match(s)
@@ -68,6 +54,7 @@ fn is_base64(s: &str) -> bool {
 }
 
 #[wasm_bindgen]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct State{
     tree: Tree, 
 }
@@ -168,8 +155,24 @@ impl State{
     }
 
     #[wasm_bindgen]
-    pub fn get_tree_data(&self) -> String{
-        format!("{:?}", self.tree).to_string()
+    pub fn export_bin(&self) -> Vec<u8>{
+        self.tree.encode()
+    }
+
+    #[wasm_bindgen]
+    pub fn export_base64(&self) -> String{
+        base64::encode(self.tree.encode())
+    }
+
+    #[wasm_bindgen]
+    pub fn encode_store(&self) -> String{
+        serde_json::to_string(&self).unwrap()
+    }
+
+    #[wasm_bindgen]
+    pub fn from_stored(encoded: String) -> Result<State, String>{
+        let state: State = serde_json::from_str(&encoded).map_err(|_| "Invalid data".to_string())?;
+        Ok(state)
     }
 }
 
