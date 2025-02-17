@@ -81,7 +81,7 @@
     >
         <h1>Upload file</h1>
         <div
-            class="border-2 border-dashed border-gray-300 p-6 rounded-lg text-center cursor-pointer"
+            class="pa-10 border-2 border-dashed border-gray-300 p-6 rounded-lg text-center cursor-pointer"
             @dragover.prevent="dragOver = true"
             @dragleave.prevent="dragOver = false"
             @drop.prevent="handleDrop"
@@ -417,4 +417,5 @@ overflow: scroll;
 .hovered {
     background-color: rgba(255, 255, 255, 0.1)
 }
+
 </style>
