@@ -207,7 +207,6 @@ export default {
             reader.onload = async function (e) {
                 const enc = new TextDecoder("utf-8");
                 const jsonData = enc.decode(e.target.result);
-                console.log(jsonData)
                 that.state = State.from_stored(jsonData)
                 that.tree = JSON.parse(that.state.get_nodes())
                 await nextTick()
@@ -289,6 +288,9 @@ export default {
         }
         if (field == "tag") {
             this.state.adapt_node_tag(id, value)
+        }
+        if (field == "label") {
+            this.state.adapt_node_label(id, value)
         }
         this.tree = JSON.parse(this.state.get_nodes())
     },
