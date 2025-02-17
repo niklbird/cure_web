@@ -2,7 +2,8 @@
   <v-app>
     <nav>
       <router-link to="/about">About</router-link> |
-      <router-link to ="/asn">ASN Parser</router-link>
+      <router-link to ="/asn">ASN Parser</router-link> |
+      <router-link to="/rpki-notify">RPKI Notify</router-link>
     </nav>
   <router-view/>
   </v-app>

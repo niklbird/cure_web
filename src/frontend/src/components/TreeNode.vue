@@ -11,18 +11,38 @@
             @mouseleave="isHovering = false;"
         >
             <span v-if="hasChildren" class="toggle-icon">{{ isExpanded ? "▼" : "▶" }}</span>
-            <span v-if="node.tag" class="node-tag">{{ node.tag[1] }}</span>
-            <span v-if="node.length" class="node-length">({{ node.length[1] }})</span>
+            <component
+                v-if="node.tag" 
+                :is="editing['tag'] ? 'input' : 'span'"
+                class="node-tag editable"
+                ref="tag"
+                @keyup.enter="toggleEditing('tag')"
+                @blur="toggleEditing('tag')"
+                @dblclick="toggleEditing('tag')"                
+            >
+                {{ editing["tag"] ? '' : node.tag[1] }}
+            </component>
+            <component
+                v-if="node.length" 
+                :is="editing['length'] ? 'input' : 'span'"
+                class="node-length editable"
+                ref="length"
+                @keyup.enter="toggleEditing('length')"
+                @blur="toggleEditing('length')"
+                @dblclick="toggleEditing('length')"
+            >
+                ({{ editing["length"] ? '' : node.length[1] }})
+            </component>
             <component
                 v-if="node.content"
-                :is="editing ? 'input': 'span'"
+                :is="editing['content'] ? 'input' : 'span'"
                 class="node-content editable" 
-                ref="input"
-                @keyup.enter="toggleEditing()"
-                @blur="toggleEditing()"
-                @dblclick="toggleEditing()"
+                ref="content"
+                @keyup.enter="toggleEditing('content')"
+                @blur="toggleEditing('content')"
+                @dblclick="toggleEditing('content')"
             >
-                {{ editing ? '' : node.content[1] }}
+                {{ editing['content'] ? '' : node.content[1] }}
             </component>
             <v-spacer></v-spacer>
             <v-btn 
@@ -42,7 +62,7 @@
                 @highlight="(id) => $emit('highlight', id)"
                 @add="(id) => $emit('add', id)"
                 @delete="(id) => $emit('delete', id)"
-                @change="(id, value) => $emit('change', id, value)"
+                @change="(id, value) => $emit('change', id, field, value)"
             />
             <div class="tree-node">
                 <div class="node-header">
@@ -82,7 +102,12 @@ emits: ["delete", "add", "change", "highlight"],
 data() {
     return {
         isExpanded: false, // Start collapsed
-        editing: false,
+        editing: {
+            "tag": false,
+            "length": false,
+            "content": false,
+            "label": false
+        },
         showDialog: false,
         isHovering: false
     };
@@ -111,19 +136,19 @@ methods: {
     deleteNode: function() {
         this.$emit("delete", this.node.id)
     },
-    async toggleEditing() {
-        this.editing = !this.editing
+    async toggleEditing(field) {
+        this.editing[field] = !this.editing[field]
 
-        if (this.editing) {
+        if (this.editing[field]) {
             await nextTick();
-            this.$refs.input.focus()
-            this.$refs.input.value = this.node.content[2]
+            this.$refs[field].focus()
+            this.$refs[field].value = this.node[field][2]
         } else {
-            if (this.$refs.input.value != this.node.content[2]) {
-                if (asn1Types[this.node.tag[0]]["rules"](this.$refs.input.value)) {
-                    this.$emit("change", this.node.id, this.$refs.input.value)
+            if (this.$refs[field].value != this.node[field][2]) {
+                if ((field != "content") || asn1Types[this.node.tag[0]]["rules"](this.$refs.input.value)) {
+                    this.$emit("change", this.node.id, field, this.$refs.input.value)
                 } else {
-                    alert("Invalid value " + this.$refs.input.value + " for field of type " + this.node.tag[1] + "\nIf you intended to input an invalid value please use hex notation (0x...)")
+                    alert("Invalid value " + this.$refs[field].value + " for field of type " + this.node.tag[1] + "\nIf you intended to input an invalid value please use hex notation (0x...)")
                 }
                 // On change we should either emit an event that triggers recomputation, or just do it from here
             }

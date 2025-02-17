@@ -32,8 +32,13 @@
                             label="Field Value"
                             :placeholder="types[type]['example']"
                         >
-
-                        </v-text-field>                        
+                        </v-text-field>       
+                        <v-text-field
+                            v-model="label"
+                            label="Label"
+                            placeholder="Name"
+                        >
+                        </v-text-field>                   
                     </v-col>
                     <v-col
                         cols="2"
@@ -58,7 +63,7 @@
             </v-card-text>
             <v-card-actions>
                 <v-btn
-                    @click="addNode(type, content)"
+                    @click="addNode(type, label, content)"
                 >
                     Add element
                 </v-btn>
@@ -123,7 +128,7 @@
                     :node="findRoot()"
                     @highlight="(id) => highlightBytes(id)"
                     @delete="(id) => deleteNode(id)"
-                    @change="(id, value) => updateNode(id, value)"
+                    @change="(id, field, value) => updateNode(id, field, value)"
                     @add="(id) => { addElement = true; addElementId = id }"
                 />
             </div>
@@ -166,7 +171,8 @@ export default {
         state: null,
         file: null,
         dragOver: false,
-        bytePosition: {}
+        bytePosition: {},
+        label: ""
     };
   },
   components: {
@@ -225,17 +231,22 @@ export default {
     addPosition: function(id, top, height) {
         this.bytePosition[id] = [top, height]
     },
-    addNode: function (type, value) {
+    addNode: function (type, label, value) {
         if (!Object.prototype.hasOwnProperty.call(this.types[type], "rules") || this.types[type]["rules"](value)) {
-            this.state.add_node(type, value, this.addElementId)
+            this.state.add_node(type, label, value, this.addElementId)
             this.tree = JSON.parse(this.state.get_nodes())
             this.addElement = false
         } else {
             alert(value + " is not a legal value for a field of type " + this.types[type]["name"] + "\n If you intend to use an invalid value submit the value in hex notation.")
         }
     },
-    updateNode: function (id, value) {
-        this.state.adapt_node_content(id, value)
+    updateNode: function (id, field, value) {
+        if (field == "content") {
+            this.state.adapt_node_content(id, value)
+        }
+        if (field == "length") {
+            this.state.adapt_node_length(id, value)
+        }
         this.tree = JSON.parse(this.state.get_nodes())
     },
     deleteNode: function (id) {
@@ -257,11 +268,9 @@ export default {
         const containerRect = byteContainer.getBoundingClientRect();
 
         // Calculate scroll position to center the target
-        const scrollTop = byteContainer.scrollTop + (this.bytePosition[id][0] - containerRect.top) - (byteContainer.clientHeight / 2) + (this.bytePosition[id][1] / 2);
+        const scrollTop = (this.bytePosition[id][0] - containerRect.top);
 
         // Smooth scrolling
-        console.log(this.bytePosition[id])
-        console.log(byteContainer.scrollTop, containerRect.top, byteContainer.clientHeight)
         byteContainer.scrollTo({ top: scrollTop, behavior: 'smooth' });
     }
   },

@@ -13,6 +13,11 @@ const routes = [
     path: '/asn',
     name: 'asn',
     component: () => import('../views/ASNView.vue')
+  },
+  {
+    path: "/rpki-notify",
+    name: "rpki-notify",
+    component: () => import('../views/NotifyView.vue')
   }
 ]
 
