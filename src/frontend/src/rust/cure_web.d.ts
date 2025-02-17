@@ -8,6 +8,7 @@ export class State {
   adapt_node_content(id: number, new_content: string): void;
   adapt_node_length(id: number, new_length: number): void;
   adapt_node_tag(id: number, tag: number): void;
+  adapt_node_label(id: number, new_label: string): void;
   remove_node(id: number): void;
   export_bin(): Uint8Array;
   export_base64(): string;
@@ -26,6 +27,7 @@ export interface InitOutput {
   readonly state_adapt_node_content: (a: number, b: number, c: number, d: number) => [number, number];
   readonly state_adapt_node_length: (a: number, b: number, c: number) => [number, number];
   readonly state_adapt_node_tag: (a: number, b: number, c: number) => [number, number];
+  readonly state_adapt_node_label: (a: number, b: number, c: number, d: number) => [number, number];
   readonly state_remove_node: (a: number, b: number) => [number, number];
   readonly state_export_bin: (a: number) => [number, number];
   readonly state_export_base64: (a: number) => [number, number];

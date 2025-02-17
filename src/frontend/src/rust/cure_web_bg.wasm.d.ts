@@ -8,6 +8,7 @@ export const state_add_node: (a: number, b: number, c: number, d: number, e: num
 export const state_adapt_node_content: (a: number, b: number, c: number, d: number) => [number, number];
 export const state_adapt_node_length: (a: number, b: number, c: number) => [number, number];
 export const state_adapt_node_tag: (a: number, b: number, c: number) => [number, number];
+export const state_adapt_node_label: (a: number, b: number, c: number, d: number) => [number, number];
 export const state_remove_node: (a: number, b: number) => [number, number];
 export const state_export_bin: (a: number) => [number, number];
 export const state_export_base64: (a: number) => [number, number];

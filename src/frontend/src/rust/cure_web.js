@@ -189,6 +189,18 @@ export class State {
     }
     /**
      * @param {number} id
+     * @param {string} new_label
+     */
+    adapt_node_label(id, new_label) {
+        const ptr0 = passStringToWasm0(new_label, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.state_adapt_node_label(this.__wbg_ptr, id, ptr0, len0);
+        if (ret[1]) {
+            throw takeFromExternrefTable0(ret[0]);
+        }
+    }
+    /**
+     * @param {number} id
      */
     remove_node(id) {
         const ret = wasm.state_remove_node(this.__wbg_ptr, id);
