@@ -111,7 +111,7 @@ impl State{
         }
 
         let val = val_to_bytes(typ, value)?;
-        
+
         let label = if label.len() == 0{
             None
         }
@@ -128,6 +128,10 @@ impl State{
         let val = val_to_bytes(self.tree.tokens[&id].tag_u, new_content.clone())?;
         self.tree.tokens.get_mut(&id).unwrap().data = val;
         self.tree.tokens.get_mut(&id).unwrap().manipulated = true;
+        self.tree.tokens.get_mut(&id).unwrap().tainted = true;
+        self.tree.taint_parents(id);
+        self.tree.fix_sizes(true);
+
         Ok(())
     }
 
@@ -149,8 +153,19 @@ impl State{
     }
 
     #[wasm_bindgen]
+    pub fn adapt_node_label(&mut self, id: usize, new_label: String) -> Result<(), String>{
+        self.tree.tokens.get_mut(&id).unwrap().info = new_label.clone();
+        self.tree.labels.insert(new_label.clone(), id);
+
+        Ok(())
+    }
+
+
+    #[wasm_bindgen]
     pub fn remove_node(&mut self, id: usize) -> Result<(), String>{
+        self.tree.taint_parents(id);
         self.tree.deep_delete(id);
+        self.tree.fix_sizes(true);
         Ok(())
     }
 
@@ -355,7 +370,7 @@ pub fn test(){
     let s = "0x".to_string() + &hex::encode(&s);
 
     let mut state = State::new(s).unwrap();
-    state.add_node(2, "2".to_string(), 0, "".to_string()).unwrap();
+    state.add_node(2, "1".to_string(), 0, "".to_string()).unwrap();
     state.adapt_node_tag(0, 43).unwrap();
     println!("{}", base64::encode(state.tree.encode()));
 }
