@@ -394,6 +394,7 @@ color: white;
 padding: 20px;
 font-family: monospace;
 text-align: left;
+overflow: scroll;
 }
 
 .drop-zone {
