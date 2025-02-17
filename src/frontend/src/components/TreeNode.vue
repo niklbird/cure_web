@@ -23,6 +23,17 @@
                 {{ editing["tag"] ? '' : node.tag[1] }}
             </component>
             <component
+                v-if="node.label"
+                :is="editing['label'] ? 'input' : 'span'"
+                class="node-tag editable"
+                ref="label"
+                @keyup.enter="toggleEditing('label')"
+                @blur="toggleEditing('label')"
+                @dblclick="toggleEditing('label')"                  
+            >
+                {{ editing["label"] ? '' : node.label }}
+            </component>
+            <component
                 v-if="node.length" 
                 :is="editing['length'] ? 'input' : 'span'"
                 class="node-length editable"
@@ -142,11 +153,11 @@ methods: {
         if (this.editing[field]) {
             await nextTick();
             this.$refs[field].focus()
-            this.$refs[field].value = this.node[field][2]
+            this.$refs[field].value = field != "label" ? this.node[field][2] : this.node.label
         } else {
             if (this.$refs[field].value != this.node[field][2]) {
-                if ((field != "content") || asn1Types[this.node.tag[0]]["rules"](this.$refs.input.value)) {
-                    this.$emit("change", this.node.id, field, this.$refs.input.value)
+                if ((field != "content") || asn1Types[this.node.tag[0]]["rules"](this.$refs[field].value)) {
+                    this.$emit("change", this.node.id, field, this.$refs[field].value)
                 } else {
                     alert("Invalid value " + this.$refs[field].value + " for field of type " + this.node.tag[1] + "\nIf you intended to input an invalid value please use hex notation (0x...)")
                 }

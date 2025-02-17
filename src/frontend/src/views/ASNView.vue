@@ -114,8 +114,21 @@
             </v-btn>
             <v-btn
                 class="ma-2"
+                @click="download('binary')"
             >
-                Save changed file
+                Export binary
+            </v-btn>
+            <v-btn
+                class="ma-2"
+                @click="download('base64')"
+            >
+                Export base64
+            </v-btn>
+            <v-btn
+                class="ma-2"
+                @click="download('json')"
+            >
+                Save project with labels
             </v-btn>
         </v-row>
         <v-row>
@@ -136,7 +149,10 @@
             <v-col
                 cols="4"
             >
-                <div class="bytes" ref="bytes">
+                <div 
+                    class="bytes" 
+                    ref="bytes"
+                >
                     <p>
                         <ByteNode
                             :tree="tree"
@@ -156,6 +172,8 @@ import { asn1Types } from '@/utils/parse'
 import init, { State } from '@/rust/cure_web.js'
 import ByteNode from '@/components/ByteNode.vue'
 import TreeNode from '@/components/TreeNode.vue'
+import { nextTick } from "vue";
+
 
 export default {
   data() {
@@ -172,7 +190,8 @@ export default {
         file: null,
         dragOver: false,
         bytePosition: {},
-        label: ""
+        label: "",
+        bytesTop: 0
     };
   },
   components: {
@@ -183,7 +202,7 @@ export default {
     uploadFile: function () {
         const reader = new FileReader();
         const that = this
-        reader.onload = function (e) {
+        reader.onload = async function (e) {
             const arrayBuffer = e.target.result;
             const uint8Array = new Uint8Array(arrayBuffer);
 
@@ -195,6 +214,11 @@ export default {
             try {
                 that.state = new State(hexString); // Pass hex string to WASM
                 that.tree = JSON.parse(that.state.get_nodes())
+                await nextTick()
+
+                const byteContener = that.$refs.bytes
+                const containerRect = containerRect.getBoundingClientRect()
+                that.bytesTop = containerRect.top
             } catch (err) {
                 console.log("Error processing WASM module: " + err)
             }
@@ -233,7 +257,7 @@ export default {
     },
     addNode: function (type, label, value) {
         if (!Object.prototype.hasOwnProperty.call(this.types[type], "rules") || this.types[type]["rules"](value)) {
-            this.state.add_node(type, label, value, this.addElementId)
+            this.state.add_node(type, value, this.addElementId, label)
             this.tree = JSON.parse(this.state.get_nodes())
             this.addElement = false
         } else {
@@ -246,6 +270,9 @@ export default {
         }
         if (field == "length") {
             this.state.adapt_node_length(id, value)
+        }
+        if (field == "tag") {
+            this.state.adapt_node_tag(id, value)
         }
         this.tree = JSON.parse(this.state.get_nodes())
     },
@@ -263,22 +290,58 @@ export default {
             return
         }
 
-        const byteContainer = this.$refs.bytes
-        // Get positions
-        const containerRect = byteContainer.getBoundingClientRect();
-
         // Calculate scroll position to center the target
-        const scrollTop = (this.bytePosition[id][0] - containerRect.top);
+        const scrollTop = (this.bytePosition[id][0] - this.bytesTop) - 50;
+        const byteContainer = this.$refs.bytes
 
         // Smooth scrolling
         byteContainer.scrollTo({ top: scrollTop, behavior: 'smooth' });
+    },
+    download: function (format) {
+        let content = null
+        let fileName = ""
+        let type = ""
+
+        switch (format) {
+            case "binary":
+                content = this.state.export_bin()
+                fileName = "data.bin"
+                type = "application/octet-stream"
+                break 
+            case "base64":
+                content = this.state.export_base64()
+                fileName = "data.txt"
+                type = "text/plain"
+                break
+            case "json":
+                content = this.state.encode_store()
+                fileName = "data.json"
+                type = "application/json"
+                break
+        }
+        
+        // Create a Blob with the content
+        const blob = new Blob([content], { type: type });
+        
+        // Create a temporary anchor element
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = fileName;
+        
+        // Trigger download
+        document.body.appendChild(link);
+        link.click();
+        
+        // Cleanup
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+
     }
   },
   async beforeCreate() {
     await init()
   },
   mounted() {
-    // this.tree = this.state.get_nodes()
   },
   beforeUnmount() {
     // clearInterval(this.intervalId); // Clear interval when component is destroyed
@@ -299,6 +362,8 @@ export default {
   padding: 20px;
   text-align: left;
   overflow: scroll; /* Scroll if text overflows */
+  position: sticky;
+  top: 0;
 }
 
 .space {
