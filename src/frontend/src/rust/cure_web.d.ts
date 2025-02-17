@@ -31,7 +31,6 @@ export interface InitOutput {
   readonly state_export_base64: (a: number) => [number, number];
   readonly state_encode_store: (a: number) => [number, number];
   readonly state_from_stored: (a: number, b: number) => [number, number, number];
-  readonly main: (a: number, b: number) => number;
   readonly __wbindgen_export_0: WebAssembly.Table;
   readonly __wbindgen_malloc: (a: number, b: number) => number;
   readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;

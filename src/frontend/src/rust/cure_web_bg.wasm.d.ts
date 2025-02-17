@@ -13,7 +13,6 @@ export const state_export_bin: (a: number) => [number, number];
 export const state_export_base64: (a: number) => [number, number];
 export const state_encode_store: (a: number) => [number, number];
 export const state_from_stored: (a: number, b: number) => [number, number, number];
-export const main: (a: number, b: number) => number;
 export const __wbindgen_export_0: WebAssembly.Table;
 export const __wbindgen_malloc: (a: number, b: number) => number;
 export const __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
