@@ -73,7 +73,7 @@
                 @highlight="(id) => $emit('highlight', id)"
                 @add="(id) => $emit('add', id)"
                 @delete="(id) => $emit('delete', id)"
-                @change="(id, value) => $emit('change', id, field, value)"
+                @change="(id, field, value) => $emit('change', id, field, value)"
             />
             <div class="tree-node">
                 <div class="node-header">
@@ -153,9 +153,9 @@ methods: {
         if (this.editing[field]) {
             await nextTick();
             this.$refs[field].focus()
-            this.$refs[field].value = field != "label" ? this.node[field][2] : this.node.label
+            this.$refs[field].value = field != "label" ? this.node[field][1] : this.node.label
         } else {
-            if (this.$refs[field].value != this.node[field][2]) {
+            if (this.$refs[field].value != this.node[field][1]) {
                 if ((field != "content") || asn1Types[this.node.tag[0]]["rules"](this.$refs[field].value)) {
                     this.$emit("change", this.node.id, field, this.$refs[field].value)
                 } else {
