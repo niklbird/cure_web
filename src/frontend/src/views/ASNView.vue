@@ -202,27 +202,43 @@ export default {
     uploadFile: function () {
         const reader = new FileReader();
         const that = this
-        reader.onload = async function (e) {
-            const arrayBuffer = e.target.result;
-            const uint8Array = new Uint8Array(arrayBuffer);
 
-            // Convert each byte to a two-character hex representation
-            const hexString = [...uint8Array]
+        if (this.file.name.endsWith(".json")) {
+            reader.onload = async function (e) {
+                const enc = new TextDecoder("utf-8");
+                const jsonData = enc.decode(e.target.result);
+                console.log(jsonData)
+                that.state = State.from_stored(jsonData)
+                that.tree = JSON.parse(that.state.get_nodes())
+                await nextTick()
+
+                const byteContainer = that.$refs.bytes
+                const containerRect = byteContainer.getBoundingClientRect()
+                that.bytesTop = containerRect.top
+            }
+
+        } else {
+            reader.onload = async function (e) {
+            try {
+                const arrayBuffer = e.target.result;
+                const uint8Array = new Uint8Array(arrayBuffer);
+
+                // Convert each byte to a two-character hex representation
+                const hexString = [...uint8Array]
                 .map(byte => byte.toString(16).padStart(2, "0").toUpperCase()) // Convert to uppercase hex
                 .join(""); // Join into a single string
-
-            try {
                 that.state = new State(hexString); // Pass hex string to WASM
                 that.tree = JSON.parse(that.state.get_nodes())
                 await nextTick()
 
-                const byteContener = that.$refs.bytes
-                const containerRect = containerRect.getBoundingClientRect()
+                const byteContainer = that.$refs.bytes
+                const containerRect = byteContainer.getBoundingClientRect()
                 that.bytesTop = containerRect.top
             } catch (err) {
                 console.log("Error processing WASM module: " + err)
             }
         };
+        }
         reader.onerror = function (e) {
             console.log("Error reading file: " + e.target.error)
         };
