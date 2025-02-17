@@ -268,7 +268,7 @@ export default {
         const containerRect = byteContainer.getBoundingClientRect();
 
         // Calculate scroll position to center the target
-        const scrollTop = byteContainer.scrollTop + (this.bytePosition[id][0] - containerRect.top) - (byteContainer.clientHeight / 2) + (this.bytePosition[id][1] / 2);
+        const scrollTop = (this.bytePosition[id][0] - containerRect.top);
 
         // Smooth scrolling
         byteContainer.scrollTo({ top: scrollTop, behavior: 'smooth' });
