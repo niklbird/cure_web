@@ -248,7 +248,8 @@ export default {
         this.$refs.fileInput.click()
     },
     handleFileSelect: function (event) {
-        const selectedFile = event.target.file
+        console.log(event)
+        const selectedFile = event.target.files[0]
         this.file = selectedFile
     },
     handleDrop: function(event) {
