@@ -15,7 +15,9 @@ regex = "1"
 base64 = "0.20.0"
 hex = "0.4"
 getrandom = { version = "0.2", features = ["js"] }
+cure_pp = {path="../cure_pp/"}
+zip = "0.6"
 
 
-[lib]
-crate-type = ["cdylib"]
+#[lib]
+#crate-type = ["cdylib"]

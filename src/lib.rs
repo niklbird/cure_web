@@ -1,8 +1,12 @@
-use std::fs;
+use std::{fs, str::from_utf8};
 use chrono::Utc;
+use cure_pp::{cure_object::CureObject, cure_repo, repository_util::{load_random_key, random_fname}};
 use regex::Regex;
 use wasm_bindgen::prelude::*;
-use cure_asn1::tree_parser::Tree;
+use cure_asn1::{rpki::{ObjectType, RpkiObject}, tree_parser::Tree};
+use std::{fs::{File}, io::{Cursor, Write}};
+
+use zip::{write::FileOptions, ZipWriter};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Node{
@@ -10,7 +14,7 @@ pub struct Node{
     pub label: String, 
     pub tag: (u8, String, Vec<u8>), // Value, Display Value, Binary Value
     pub length: (usize, String, Vec<u8>), 
-    pub content: (String, String, Vec<u8>), 
+    pub content: (String, String, Vec<u8>),  // 
     pub children: Vec<usize>,
     pub parent: usize,
 }
@@ -53,6 +57,50 @@ fn is_base64(s: &str) -> bool {
     base64_regex.is_match(s)
 }
 
+fn create_zip_in_memory(files: Vec<(String, Vec<u8>)>) -> zip::result::ZipResult<Vec<u8>> {
+    let buffer = Vec::new();
+    let cursor = Cursor::new(buffer);
+    let mut zip = ZipWriter::new(cursor);
+
+    let options = FileOptions::default()
+        .compression_method(zip::CompressionMethod::Stored) // or .Deflated
+        .unix_permissions(0o755);
+
+    for (path, contents) in files {
+        zip.start_file(path, options)?;
+        zip.write_all(&contents)?;
+    }
+
+    let cursor = zip.finish()?;
+    Ok(cursor.into_inner()) // this gives you the Vec<u8>
+}
+
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[wasm_bindgen]
+pub struct RrdpEntry{
+    uri: String,
+    content: String,
+}
+
+#[wasm_bindgen]
+impl RrdpEntry {
+    #[wasm_bindgen(constructor)]
+    pub fn new(uri: String, content: String) -> RrdpEntry {
+        RrdpEntry { uri, content }
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn uri(&self) -> String {
+        self.uri.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn content(&self) -> String {
+        self.content.clone()
+    }
+}
+
 #[wasm_bindgen]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct State{
@@ -64,7 +112,6 @@ impl State{
     #[wasm_bindgen(constructor)]
     pub fn new(data: String) -> Result<State, String>{
         // Takes either hex or base64 encoded data is input
-
         let mut data = data.trim().to_string();
         if data.starts_with("0x"){
             data = data[2..].to_string();
@@ -95,6 +142,71 @@ impl State{
         Ok(State{
             tree: tree.unwrap(),
         })
+    }
+
+    #[wasm_bindgen]
+    pub fn repositorify(&self) -> Vec<u8>{
+        let (repo_files, tal, ca_cert) = self.into_rpki_repo();
+        let mut files = repo_files.clone();
+        files.push(("ta.tal".to_string(), tal));
+        files.push(("data/repo/ta/ta.cer".to_string(), ca_cert));
+        create_zip_in_memory(files).unwrap_or_default()
+    }
+
+    // (Snapshot and Notification, TAL, CA Cert)
+    fn into_rpki_repo(&self) -> (Vec<(String, Vec<u8>)>, Vec<u8>, Vec<u8>){
+        let mut repo = cure_repo::new_parent_child();
+
+        // let rpki_object = RpkiObject::new(self.tree.clone(), self.tree.obj_type.clone());
+        let parent_key;
+        if self.tree.obj_type == "cer"{
+            parent_key = repo.child_repos[0].certificate.parent_key.clone();
+        }
+        else{
+            parent_key = repo.child_repos[0].certificate.child_key.clone();
+        }
+
+        let child_key = load_random_key(&repo.conf).1;
+        let name = format!("{}.{}", random_fname(), self.tree.obj_type);
+
+        let cure_obj = CureObject::new(
+            ObjectType::from_string(&self.tree.obj_type),
+            parent_key,
+            child_key,
+            self.tree.clone(),
+            name,
+        );
+
+
+        if cure_obj.op_type.is_payload(){
+            repo.child_repos[0].payloads = vec![cure_obj];
+        }
+        else{
+            match cure_obj.op_type{
+                ObjectType::MFT => {
+                    repo.child_repos[0].manifest = cure_obj;
+                }
+                ObjectType::CRL => {
+                    repo.child_repos[0].crl = cure_obj;
+                }
+                ObjectType::CERTCA => {
+                    repo.child_repos[0].certificate = cure_obj;
+                }
+                _ => {}
+            }
+        } 
+
+        repo.child_repos[0].fix_all_objects(true);
+        repo.fix_all_objects(true);
+
+        repo.conf.base_rrdp_dir_l = repo.conf.base_rrdp_dir.clone();
+        let ret = repo.create_snapshot_notification(&repo.conf);
+        // let mut ret_vec = vec![];
+        // for (name, data) in ret{
+        //     let s_data = from_utf8(&data).unwrap().to_string();
+        //     ret_vec.push((name, s_data));
+        // }
+        (ret, repo.get_tal().as_bytes().to_vec(), repo.certificate.tree.encode())
     }
 
 
@@ -370,9 +482,13 @@ pub fn test(){
     let s = "0x".to_string() + &hex::encode(&s);
 
     let mut state = State::new(s).unwrap();
-    state.add_node(2, "1".to_string(), 0, "".to_string()).unwrap();
-    state.adapt_node_tag(0, 43).unwrap();
-    println!("{}", base64::encode(state.tree.encode()));
+    // state.add_node(2, "1".to_string(), 0, "".to_string()).unwrap();
+    // state.adapt_node_tag(0, 43).unwrap();
+
+    // println!("{}: {}",state.into_rpki_repo()[0].uri(), state.into_rpki_repo()[0].content());
+    // println!("{}", base64::encode(state.tree.encode()));
+    let z = state.repositorify();
+    fs::write("test2.zip", z);
 }
 
 
