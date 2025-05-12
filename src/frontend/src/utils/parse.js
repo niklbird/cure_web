@@ -1,4 +1,4 @@
-export const asn1Types = {
+export const ASN1_TYPES = {
     1: {
         name: "BOOLEAN",
         rules: (value) => value in ["TRUE", "FALSE"],
@@ -6,8 +6,14 @@ export const asn1Types = {
         description: `
             ASN.1 BOOLEAN tag: 01
 
-            The ASN.1 BOOLEAN type has two possible values: TRUE and FALSE. You can define new types based on this built-in type.
-        `
+            The ASN.1 BOOLEAN type has two possible values: TRUE and FALSE. 
+            You can define new types based on this built-in type.
+        `,
+        completions: [
+            true,
+            false
+        ],
+        transform: null
     },
     2: {
         name: "INTEGER",
@@ -16,10 +22,18 @@ export const asn1Types = {
         description: `
             ASN.1 INTEGER tag: 02
 
-            The INTEGER type value can be a positive or negative number. There are no limits imposed on the magnitude of INTEGER values in the ASN.1 standard.
+            The INTEGER type value can be a positive or negative number. 
+            There are no limits imposed on the magnitude of INTEGER values in the ASN.1 standard.
 
-            INTEGER types can also be used like enumerated types in C. In a type definition, the word "INTEGER" can be followed by a bracketed list of identifiers, each assigned to a particular INTEGER value. Each identifier must begin with a lowercase letter and may contain letters, digits, or hyphens. The named number list allows INTEGER values to convey a variety of meanings. Note that not all possible values must be defined in the list. You can assign names only to the first and last legal values, or to some other significant subset of the possibilities.
-        `
+            INTEGER types can also be used like enumerated types in C. 
+            In a type definition, the word "INTEGER" can be followed by a bracketed list of identifiers, each assigned to a particular INTEGER value. 
+            Each identifier must begin with a lowercase letter and may contain letters, digits, or hyphens. 
+            The named number list allows INTEGER values to convey a variety of meanings. 
+            Note that not all possible values must be defined in the list. 
+            You can assign names only to the first and last legal values, or to some other significant subset of the possibilities.
+        `,
+        completions: [],
+        transform: null
     },
     3: {
         name: "BIT STRING",
@@ -36,8 +50,30 @@ export const asn1Types = {
         description: `
             ASN.1 BIT STRING tag: 03
 
-            ASN.1 BIT STRING type values are arbitrary length strings of bits. A BIT STRING value doesn't need to be an even multiple of eight bits. Similar to INTEGERs, BIT STRING type definitions can include named bit lists. You can assign a meaning to each individual bit in the string (more than one value from the list can be present in a single BIT STRING value). BIT STRING values can be described as binary strings, hexadecimal strings, or using the identifiers from a BIT STRING's named bit list. A BIT STRING containing all zero bits can be expressed using empty curly brackets. 
-        `
+            ASN.1 BIT STRING type values are arbitrary length strings of bits. 
+            A BIT STRING value doesn't need to be an even multiple of eight bits. 
+            Similar to INTEGERs, BIT STRING type definitions can include named bit lists. 
+            You can assign a meaning to each individual bit in the string (more than one value from the list can be present in a single BIT STRING value). 
+            BIT STRING values can be described as binary strings, hexadecimal strings, or using the identifiers from a BIT STRING's named bit list. 
+            A BIT STRING containing all zero bits can be expressed using empty curly brackets. 
+        `,
+        completions: [],
+        transform: {
+            "ipv4": (value) => {
+                // Convert IP string to binary
+                const parts = value.split(".");
+                if (parts.length !== 4) return null;
+                const binaryParts = parts.map(part => parseInt(part).toString(2).padStart(8, '0'));
+                return binaryParts.join("");
+            },
+            "ipv6": (value) => {
+                // Convert IPv6 string to binary
+                const parts = value.split(":");
+                if (parts.length !== 8) return null;
+                const binaryParts = parts.map(part => parseInt(part, 16).toString(2).padStart(16, '0'));
+                return binaryParts.join("");
+            }
+        }
     },
     4: {
         name: "OCTET STRING",
@@ -52,18 +88,28 @@ export const asn1Types = {
         description: `
             ASN.1 OCTET STRING tag: 04
 
-            The ASN.1 OCTET STRING type contains arbitrary strings of octets. This type is very similar to BIT STRING, except that all values must be an integral number of eight bits. You can use constraints to specify a maximum length for an OCTET STRING type.
-        `
+            The ASN.1 OCTET STRING type contains arbitrary strings of octets. 
+            This type is very similar to BIT STRING, except that all values must be an integral number of eight bits. 
+            You can use constraints to specify a maximum length for an OCTET STRING type.
+        `,
+        completions: [],
+        transform: null
     },
     5: { 
         name: "NULL",
         rules: (value) => value == "NULL",
         example: "NULL",
         description: `
-        ASN.1 NULL tag: 05
+            ASN.1 NULL tag: 05
 
-        The ASN.1 NULL type is used when you need a placeholder for which there is no value. For example, it can be used to mark a currently empty space. The NULL type has only one possible value, also called NULL. 
-    `
+            The ASN.1 NULL type is used when you need a placeholder for which there is no value. 
+            For example, it can be used to mark a currently empty space. 
+            The NULL type has only one possible value, also called NULL. 
+        `,
+        completions: [
+            "NULL"
+        ],
+        transform: null
     },
     6: {
         name: "OBJECT IDENTIFIER",
@@ -78,8 +124,18 @@ export const asn1Types = {
 
             The ASN.1 OBJECT IDENTIFIER type is used when you need to provide a unique identifier (for example, for a module).
         
-            The possible values of OBJECT IDENTIFIERs are defined by reference to an object identifier tree beginning with three numbered branches coming from the root: branch 0, assigned to ITU-T (formerly CCITT), branch 1, assigned to ISO, and branch 2, a joint ISO-ITU-T branch. Below each of these branches are other numbered branches. This hierarchical organization allows unique names to be assigned to any number of objects.
-        `
+            The possible values of OBJECT IDENTIFIERs are defined by reference to an object identifier tree beginning with three numbered branches coming from the root: 
+            branch 0, assigned to ITU-T (formerly CCITT), 
+            branch 1, assigned to ISO, 
+            and branch 2, a joint ISO-ITU-T branch. 
+            
+            Below each of these branches are other numbered branches. 
+            This hierarchical organization allows unique names to be assigned to any number of objects.
+        `,
+        completions: [
+            // TODO ...
+        ],
+        transform: null
     },
     7: {
         name: "ObjectDescriptor",
@@ -89,7 +145,9 @@ export const asn1Types = {
             ASN.1 ObjectDescriptor tag: 07
 
             The ASN.1 ObjectDescriptor type is similar to the GraphicString type; its value is expressed as a quoted string. 
-        `
+        `,
+        completions: [],
+        transform: null
     },
     8: {
         name: "EXTERNAL",
@@ -98,12 +156,22 @@ export const asn1Types = {
         description: `
             ASN.1 EXTERNAL tag: 08
 
-            The ASN.1 EXTERNAL type was originally meant to be used for types that were defined externally. The intent was to use EXTERNAL to represent all data exchanged via the OSI Presentation Layer.
+            The ASN.1 EXTERNAL type was originally meant to be used for types that were defined externally. 
+            The intent was to use EXTERNAL to represent all data exchanged via the OSI Presentation Layer.
 
-            The OSI presentation layer protocol defines mechanisms for negotiating pairs of abstract and transfer syntaxes to be used for communication. Each pair is called a presentation context. The protocol assigns a unique integer value to each active presentation context called the presentation context identifier (PCI). Data encoded using the EXTERNAL type may contain a PCI value (the presentation-context-id in the definition) identifying which presentation context this data belongs to. The context-negotiation is used mainly during the connection establishment phase to indicate the transfer syntax, and syntax is used to identify the abstract syntax that defines the type of the value in data-value. Once the connection has been fully established, the presentation-context-id is then used in values of the EXTERNAL type. In practice, the data-value-descriptor is rarely used. This definition of EXTERNAL is that of an "associated SEQUENCE type", and in BER and PER does not reflect how the values are actually encoded.
+            The OSI presentation layer protocol defines mechanisms for negotiating pairs of abstract and transfer syntaxes to be used for communication. 
+            Each pair is called a presentation context. 
+            The protocol assigns a unique integer value to each active presentation context called the presentation context identifier (PCI). 
+            Data encoded using the EXTERNAL type may contain a PCI value (the presentation-context-id in the definition) identifying which presentation context this data belongs to. 
+            The context-negotiation is used mainly during the connection establishment phase to indicate the transfer syntax, and syntax is used to identify the abstract syntax that defines the type of the value in data-value. 
+            Once the connection has been fully established, the presentation-context-id is then used in values of the EXTERNAL type. 
+            In practice, the data-value-descriptor is rarely used. 
+            This definition of EXTERNAL is that of an "associated SEQUENCE type", and in BER and PER does not reflect how the values are actually encoded.
 
             The EMBEDDED PDV type was introduced in 1994 to replace the EXTERNAL type.
-        `
+        `,
+        completions: [],
+        transform: null
     },
     9: {
         name: "REAL",
@@ -122,8 +190,12 @@ export const asn1Types = {
         description: `
             ASN.1 REAL tag: 09
 
-            The ASN.1 REAL type is used to represent real (floating point) values. The REAL type defines real values according to the formula m * be, where m is the mantissa, b the base (either 2 or 10), and e the exponent. The value notation for REALs must specify a value for each of these three parts. This is done by enclosing the values in curly brackets ( "{" and "}" ) in the order m, b, e, with the identifiers mantissa, base, exponent respectively.
-        `
+            The ASN.1 REAL type is used to represent real (floating point) values. 
+            The REAL type defines real values according to the formula m * be, where m is the mantissa, b the base (either 2 or 10), and e the exponent. The value notation for REALs must specify a value for each of these three parts. 
+            This is done by enclosing the values in curly brackets ( "{" and "}" ) in the order m, b, e, with the identifiers mantissa, base, exponent respectively.
+        `,
+        completions: [],
+        transform: null
     },
     10: {
         name: "ENUMERATED",
@@ -135,8 +207,12 @@ export const asn1Types = {
         description: `
             ASN.1 ENUMERATED tag: 10
 
-            The ASN.1 ENUMERATED type is used to create a list of named items. It is similar to the INTEGER type, however, for ENUMERATED, the only values permitted are those identified by name in the list. For INTEGER, the named list is just a set of useful labels for specific numbers, and does not limit what values are permitted.
-        `
+            The ASN.1 ENUMERATED type is used to create a list of named items. 
+            It is similar to the INTEGER type, however, for ENUMERATED, the only values permitted are those identified by name in the list. 
+            For INTEGER, the named list is just a set of useful labels for specific numbers, and does not limit what values are permitted.
+        `,
+        completions: [],
+        transform: null
     },
     11: {
         name: "EMBEDDED PDV",
@@ -145,8 +221,12 @@ export const asn1Types = {
         description: `
             ASN.1 EMBEDDED PDV tag: 11
 
-            The ASN.1 EMBEDDED PDV type replaces the EXTERNAL type. EMBEDDED PDV allows you to use a specific encoding for an abstract value while making the transfer syntax negotiation easier on the Presentation layer. The EMBEDDED PDV type is represented by a predefined SEQUENCE.         
-        `
+            The ASN.1 EMBEDDED PDV type replaces the EXTERNAL type. 
+            EMBEDDED PDV allows you to use a specific encoding for an abstract value while making the transfer syntax negotiation easier on the Presentation layer. 
+            The EMBEDDED PDV type is represented by a predefined SEQUENCE.         
+        `,
+        completions: [],
+        transform: null
     },
     12: {
         name: "UTF8String",
@@ -155,8 +235,11 @@ export const asn1Types = {
         description: `
             ASN.1 UTF8String tag: 12
 
-            The ASN.1 UTF8String type is used for handling Unicode characters. UniversalString and UTF8String both support the same character set, however, their encoding is different.
-        `
+            The ASN.1 UTF8String type is used for handling Unicode characters. 
+            UniversalString and UTF8String both support the same character set, however, their encoding is different.
+        `,
+        completions: [],
+        transform: null
     },
     13: {
         name: "RELATIVE-OID",
@@ -169,7 +252,9 @@ export const asn1Types = {
             ASN.1 RELATIVE-OID tag: 13
 
             The ASN.1 RELATIVE-OID type is represented by a series of integers, composing a path within the OID tree, but relative to the current OID root. 
-        `
+        `,
+        completions: [],
+        transform: null
     },
     14: {
         name: "TIME",
@@ -188,25 +273,40 @@ export const asn1Types = {
                 The concept of specifying a recurring time interval.
 
             The useful time types (DATE, TIME-OF-DAY, DATE-TIME) are defined as subsets of the TIME type.
-        `
+        `,
+        completions: [],
+        transform: null
     },
-    16: {
+    48: {
         name: "SEQUENCE",
         description: `
             ASN.1 SEQUENCE tag: 16
 
-            In ASN.1, an ordered list of elements (or components) comprises a SEQUENCE. Using SEQUENCE, you can create a new type built from an arbitrary series of elements. Each element must identify its type, either by specifying a type name or by actually defining the element's type inline. Each element in the sequence must be assigned an identifier. Note that while all type names begin with upper case letters, any identifiers assigned to the elements must begin with a lower case letter. Identifiers have no effect on an encoded value of the type.
-        `
+            In ASN.1, an ordered list of elements (or components) comprises a SEQUENCE. 
+            Using SEQUENCE, you can create a new type built from an arbitrary series of elements. 
+            Each element must identify its type, either by specifying a type name or by actually defining the element's type inline. 
+            Each element in the sequence must be assigned an identifier. 
+            Note that while all type names begin with upper case letters, any identifiers assigned to the elements must begin with a lower case letter. 
+            Identifiers have no effect on an encoded value of the type.
+        `,
+        completions: [],
+        transform: null
     },
-    17: {
+    49: {
         name: "SET",
         description: `
             ASN.1 SET tag: 17
 
-            The ASN.1 SET type is similar to the SEQUENCE type. The key difference is that the elements in each value of a SEQUENCE type must appear in the order shown in the definition. The elements of a SET type value may appear in any order, regardless of how they are listed in the SET's definition, unless the encoding rule requires otherwise (for example, DER and PER). Note that defining a SET containing some elements of the same base type without element names can lead to ambiguity in the value notation.
+            The ASN.1 SET type is similar to the SEQUENCE type. 
+            The key difference is that the elements in each value of a SEQUENCE type must appear in the order shown in the definition. 
+            The elements of a SET type value may appear in any order, regardless of how they are listed in the SET's definition, unless the encoding rule requires otherwise (for example, DER and PER). 
+            Note that defining a SET containing some elements of the same base type without element names can lead to ambiguity in the value notation.
 
-            Using SET types can sometimes make implementation of encoding/decoding software more difficult; therefore it is recommended to use the SEQUENCE type whenever possible.
-        `
+            Using SET types can sometimes make implementation of encoding/decoding software more difficult; 
+            therefore it is recommended to use the SEQUENCE type whenever possible.
+        `,
+        completions: [],
+        transform: null
     },
     18: {
         name: "NumericString",
@@ -216,7 +316,9 @@ export const asn1Types = {
             ASN.1 NumericString tag: 18
 
             The ASN.1 NumericString type is recommended when you need to use digits and spaces. 
-        `
+        `,
+        completions: [],
+        transform: null
     },
     19: {
         name: "PrintableString",
@@ -225,8 +327,11 @@ export const asn1Types = {
         description: `
             ASN.1 PrintableString tag: 19
 
-            The ASN.1 PrintableString type supports upper case letters "A" through "Z", lower case letters "a" through "z", the digits "0" through "9", space, and common punctuation marks. Note that PrintableString does not support the "@", "&", and "*" characters.
-        `
+            The ASN.1 PrintableString type supports upper case letters "A" through "Z", lower case letters "a" through "z", the digits "0" through "9", space, and common punctuation marks. 
+            Note that PrintableString does not support the "@", "&", and "*" characters.
+        `,
+        completions: [],
+        transform: null
     },
     20: {
         name: "TeletexString",
@@ -237,8 +342,12 @@ export const asn1Types = {
 
             The ASN.1 TeletexString type supports characters defined in Recommendation T.61 for Teletex applications.
             
-            The TeletexString type was originally created for supporting different character sets which could be printed by Teletex machine. It uses special "escape" characters to switch to different character sets. This type should be avoided since UTF8String, BMPString or UniversalString cover all character sets without needing to "escape" into different character sets.
-        `
+            The TeletexString type was originally created for supporting different character sets which could be printed by Teletex machine. 
+            It uses special "escape" characters to switch to different character sets. 
+            This type should be avoided since UTF8String, BMPString or UniversalString cover all character sets without needing to "escape" into different character sets.
+        `,
+        completions: [],
+        transform: null
     },
     21: {
         name: "VideotexString",
@@ -247,8 +356,11 @@ export const asn1Types = {
         description: `
             ASN.1 VideotexString tag: 21
 
-            The ASN.1 VideotexString type supports T.100/T.101 characters. This type is no longer used.
-        `
+            The ASN.1 VideotexString type supports T.100/T.101 characters. 
+            This type is no longer used.
+        `,
+        completions: [],
+        transform: null
     },
     22: {
         name: "IA5String",
@@ -258,7 +370,9 @@ export const asn1Types = {
             ASN.1 IA5String tag: 22
 
             The ASN.1 IA5String type uses 7-bit characters. It is equivalent to the ASCII alphabet.
-        `
+        `,
+        completions: [],
+        transform: null
     },
     23: {
         name: "UTCTime",
@@ -270,10 +384,20 @@ export const asn1Types = {
         description: `
             ASN.1 UTCTime tag: 23
 
-            The ASN.1 UTCTime type is similar to the VisibleString type (their encoding is identical), however, it has a more restricted format, as follows: a UTCTime string value contains a two-digit year, a two-digit month, a two-digit day, a two-digit hour, and a two-digit minute. Optionally, a two-digit second can be added. The string ends with an uppercase Z ("YYMMDDhhmm[ss]Z"). For example, for "8:30 p.m. on April 15, 1988", the resulting string (with seconds omitted) is "8804152030Z". Instead of ending with a Z, the string may end with a "+" or "-", followed by a two-digit hour and two-digit minute. Instead of indicating UTC time, the first part of the string represents local time, and the final characters indicate the differential from UTC time. To represent the local time "8:30 p.m. on April 15, 1988" in an area 6 hours behind UTC time, "8804152030-0600" is used.
+            The ASN.1 UTCTime type is similar to the VisibleString type (their encoding is identical), 
+            however, it has a more restricted format, as follows: 
+            a UTCTime string value contains a two-digit year, a two-digit month, a two-digit day, a two-digit hour, and a two-digit minute. 
+            Optionally, a two-digit second can be added. The string ends with an uppercase Z ("YYMMDDhhmm[ss]Z"). 
+            For example, for "8:30 p.m. on April 15, 1988", the resulting string (with seconds omitted) is "8804152030Z". 
+            Instead of ending with a Z, the string may end with a "+" or "-", followed by a two-digit hour and two-digit minute. 
+            Instead of indicating UTC time, the first part of the string represents local time, and the final characters indicate the differential from UTC time. 
+            To represent the local time "8:30 p.m. on April 15, 1988" in an area 6 hours behind UTC time, "8804152030-0600" is used.
             
-            Because a two-digit year is used (rather than a four-digit year), there might be ambiguity regarding which century is being represented by the date. Therefore, it is recommended to use DATE, TIME-OF-DAY, or DATE-TIME types instead of UTCTime.
-        `
+            Because a two-digit year is used (rather than a four-digit year), there might be ambiguity regarding which century is being represented by the date. 
+            Therefore, it is recommended to use DATE, TIME-OF-DAY, or DATE-TIME types instead of UTCTime.
+        `,
+        completions: [],
+        transform: null
     },
     24: {
         name: "GeneralizedTime",
@@ -283,16 +407,20 @@ export const asn1Types = {
         },
         example: "19880415203000Z", // (April 15, 1988, 20:30 UTC)
         description: `
-        ASN.1 GeneralizedTime tag: 24
+            ASN.1 GeneralizedTime tag: 24
 
-        The ASN.1 GeneralizedTime type consists of strings of digits and certain characters, and provides three ways of describing time:
-        
-            Local time can be described as a four-digit year, a two digit month, a two-digit day, a two-digit hour (based on a twenty four hour clock) a two-digit minute, and a two-digit second with a decimal point and digit ("YYYYMMDDHH[MM[SS[.fff]]]"). For example, "8:30 p.m. on April 15, 1988" is represented by the string "19880415203000.0".
-            Coordinated Universal Time (UTC time) can be described as a string of the form described above followed by an uppercase "Z", which indicates that the value is UTC time rather than local time.
-            A value described as in the first case may be followed by an indication of the differential from UTC time. For example, the string "19880415203000.0-0600" represents "8:30 p.m. on April 15, 1988", but also indicates that this local time is 6 hours behind UTC time.
-        
-        Although a four-digit year is used and some potential ambiguities are removed, it is recommended to use DATE, TIME-OF-DAY, or DATE-TIME types instead of GeneralizedTime, as they fully support ISO 8601, the definitive standard for time and date representations.
-    `
+            The ASN.1 GeneralizedTime type consists of strings of digits and certain characters, and provides three ways of describing time:
+            
+                Local time can be described as a four-digit year, a two digit month, a two-digit day, a two-digit hour (based on a twenty four hour clock) a two-digit minute, and a two-digit second with a decimal point and digit ("YYYYMMDDHH[MM[SS[.fff]]]"). 
+                For example, "8:30 p.m. on April 15, 1988" is represented by the string "19880415203000.0".
+                Coordinated Universal Time (UTC time) can be described as a string of the form described above followed by an uppercase "Z", which indicates that the value is UTC time rather than local time.
+                A value described as in the first case may be followed by an indication of the differential from UTC time. 
+                For example, the string "19880415203000.0-0600" represents "8:30 p.m. on April 15, 1988", but also indicates that this local time is 6 hours behind UTC time.
+            
+            Although a four-digit year is used and some potential ambiguities are removed, it is recommended to use DATE, TIME-OF-DAY, or DATE-TIME types instead of GeneralizedTime, as they fully support ISO 8601, the definitive standard for time and date representations.
+        `,
+        completions: [],
+        transform: null
     },
     25: {
         name: "GraphicString",
@@ -302,7 +430,9 @@ export const asn1Types = {
             ASN.1 VisibleString tag: 26
 
             The ASN.1 VisibleString type supports a subset of ASCII characters that does not include control characters.
-        `
+        `,
+        completions: [],
+        transform: null
     },
     26: {
         name: "VisibleString",
@@ -312,7 +442,9 @@ export const asn1Types = {
             ASN.1 VisibleString tag: 26
 
             The ASN.1 VisibleString type supports a subset of ASCII characters that does not include control characters.
-        `
+        `,
+        completions: [],
+        transform: null
     },
     27: {
         name: "GeneralString",
@@ -321,10 +453,14 @@ export const asn1Types = {
         description: `
             ASN.1 GeneralString tag: 27
 
-            The ASN.1 GeneralString type is the broadest of the ASN.1 defined string types. It may contain any characters from a "G" and "C" set of any standardized character sets.
+            The ASN.1 GeneralString type is the broadest of the ASN.1 defined string types. 
+            It may contain any characters from a "G" and "C" set of any standardized character sets.
         
-            Similar to the GraphicString type, GeneralString is too general to be implemented, therefore it is not recommended. The following types can be used instead: UTF8String, BMPString, or UniversalString.
-        `
+            Similar to the GraphicString type, GeneralString is too general to be implemented, therefore it is not recommended. 
+            The following types can be used instead: UTF8String, BMPString, or UniversalString.
+        `,
+        completions: [],
+        transform: null
     },
     28: {
         name: "UniversalString",
@@ -333,8 +469,12 @@ export const asn1Types = {
         description: `
             ASN.1 UniversalString tag: 28
 
-            The ASN.1 UniversalString type supports characters drawn from from ISO 10646. These are four-byte characters, and are not recommended for use unless properly subtyped. This type did not gain popularity, and it is often replaced with UTF8String.
-        `
+            The ASN.1 UniversalString type supports characters drawn from from ISO 10646. 
+            These are four-byte characters, and are not recommended for use unless properly subtyped. 
+            This type did not gain popularity, and it is often replaced with UTF8String.
+        `,
+        completions: [],
+        transform: null
     },
     29: {
         name: "CHARACTER STRING",
@@ -343,8 +483,14 @@ export const asn1Types = {
         description: `
             ASN.1 CHARACTER STRING tag: 29
 
-            The ASN.1 CHARACTER STRING type allows the definition of character sets to be deferred until runtime. This set of characters can be negotiated, and carries characters defined in any abstract syntax. The set of abstract characters is not statically defined. The abstract syntax may belong to the presentation context set allocated in an instance of communication or can be directly referenced when using the CHARACTER STRING type. The CHARACTER STRING type is represented by a predefined SEQUENCE.
-        `
+            The ASN.1 CHARACTER STRING type allows the definition of character sets to be deferred until runtime. 
+            This set of characters can be negotiated, and carries characters defined in any abstract syntax. 
+            The set of abstract characters is not statically defined. 
+            The abstract syntax may belong to the presentation context set allocated in an instance of communication or can be directly referenced when using the CHARACTER STRING type. 
+            The CHARACTER STRING type is represented by a predefined SEQUENCE.
+        `,
+        completions: [],
+        transform: null
     },
     30: {
         name: "BMPString",
@@ -353,8 +499,11 @@ export const asn1Types = {
         description: `
             ASN.1 BMPString tag: 30
 
-            The ASN.1 BMPString type contains UNICODE characters. They are two-byte characters, and are not recommended for use unless properly subtyped.
-        `
+            The ASN.1 BMPString type contains UNICODE characters. 
+            They are two-byte characters, and are not recommended for use unless properly subtyped.
+        `,
+        completions: [],
+        transform: null
     },
     31: {
         name: "DATE",
@@ -364,7 +513,9 @@ export const asn1Types = {
             ASN.1 DATE tag: 31
 
             The ASN.1 DATE type consists of a string value that has the form "YYYY-MM-DD", which represents a calendar date. 
-        `
+        `,
+        completions: [],
+        transform: null
     },
     32: {
         name: "TIME-OF-DAY",
@@ -373,8 +524,13 @@ export const asn1Types = {
         description: `
             ASN.1 TIME-OF-DAY tag: 32
 
-            Time types are derived from the character string type VisibleString. Their value notation is the same as that for VisibleString. The ASN.1 TIME-OF-DAY type is used to represent a particular time of day. Values have the form "HH:MM:SS".
-        `
+            Time types are derived from the character string type VisibleString. 
+            Their value notation is the same as that for VisibleString. 
+            The ASN.1 TIME-OF-DAY type is used to represent a particular time of day. 
+            Values have the form "HH:MM:SS".
+        `,
+        completions: [],
+        transform: null
     },
     33: {
         name: "DATE-TIME",
@@ -383,8 +539,11 @@ export const asn1Types = {
         description: `
             ASN.1 DATE-TIME tag: 33
 
-            The ASN.1 DATE-TIME type is used to represent a date and time value. Values have the form "YYYY-MM-DDTHH:MM:SS".
-        `
+            The ASN.1 DATE-TIME type is used to represent a date and time value. 
+            Values have the form "YYYY-MM-DDTHH:MM:SS".
+        `,
+        completions: [],
+        transform: null
     },
     34: {
         name: "DURATION",
@@ -393,8 +552,12 @@ export const asn1Types = {
         description: `
             ASN.1 DURATION tag: 34
 
-            The ASN.1 DURATION type is defined as a subset of the TIME type. The DURATION type is used to represent a particular time interval. 
-        `
+            The ASN.1 DURATION type is defined as a subset of the TIME type. 
+            The DURATION type is used to represent a particular time interval. 
+        `,
+        completions: [],
+        transform: null
     }
-
 }
+
+export const TIME_TYPES = ["UTCTime", "GeneralizedTime", "DATE", "TIME-OF-DAY", "DATE-TIME", "DURATION"]

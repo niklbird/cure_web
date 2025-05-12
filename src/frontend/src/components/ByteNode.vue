@@ -1,6 +1,6 @@
 <template>
     <span
-        :class="(node.id == selected ? 'highlighted' : '')"
+        :class="(node.id == $store.getters.highlighted ? 'highlighted' : '')"
         ref="span"
     >
         <span
@@ -8,9 +8,9 @@
         >
             <span 
                 v-for="(byte, i) in node.tag[2]" :key="i"
-                class="tag"
+                class="tag pa-1"
             >
-                {{ dec2hex(byte) }}&VeryThinSpace;
+                {{ dec2hex(byte) }}
             </span>            
         </span>
         <span
@@ -18,28 +18,26 @@
         >
             <span
                 v-for="(byte, i) in node.length[2]" :key="i"
-                class="length"                             
+                class="length pa-1"                             
             >
-                {{ dec2hex(byte) }}&VeryThinSpace;
-            </span>            
+                {{ dec2hex(byte) }}
+            </span>
+
         </span>
         <span
             v-if="node.content"
         >
             <span
                 v-for="(byte, i) in node.content[2]" :key="i"
-                class="content"
+                class="content pa-1"
             >
-                {{ dec2hex(byte) }}&VeryThinSpace;
+                {{ dec2hex(byte) }}
             </span>            
         </span>
         <ByteNode
             v-for="(nodeId, idx) in node.children"
             :key="idx"
-            :tree="tree"
-            :node="nodeFromId(nodeId)"
-            :selected="selected"
-            @position="(id, top, height) => $emit('position', id, top, height)"
+            :node="$store.getters.getNodeFromId(nodeId)"
         ></ByteNode>
     </span>
 </template>
@@ -47,23 +45,10 @@
 <script>
 export default {
     props: {
-        tree: Array,
-        node: Object,
-        selected: Number
+        node: Object
     },
     emits: ["position"],
     methods: {
-        nodeFromId: function(id) {
-            let candidates = this.tree.filter((node) => node.id == id)
-
-            if (candidates.length > 0) {
-                return candidates[0]
-            } else {
-                return {
-                    children: []
-                }
-            }  
-        },
         dec2hex: function (i) {
             return (i+0x10000).toString(16).substr(-2).toUpperCase();
         },
@@ -72,7 +57,11 @@ export default {
         const target = this.$refs.span
         const targetRect = target.getBoundingClientRect();
 
-        this.$emit("position", this.node.id, targetRect.top, target.clientHeight)
+        this.$store.commit("positionAdded", {
+            id: this.node.id, 
+            top: targetRect.top, 
+            height: target.clientHeight
+        })
     }
 }
 
@@ -92,11 +81,22 @@ export default {
 }
 
 .highlighted {
-  background-color: white;
-  opacity: 0.5;
-  color: black;
-  font-weight: bold;
-  /*padding: 2px 4px;
-  border-radius: 4px;*/
+    background-color: gray;
+    font-weight: bold;
+    padding: 2px 4px;
+    border-radius: 4px;
 }
+
+.tag, .length, .content {
+    display: inline-block;  /* Ensure the byte spans are treated as block-level elements within the line */
+    white-space: nowrap;    /* Prevent the bytes from breaking in the middle */
+    word-wrap: break-word;  /* Allow wrapping when necessary */
+    overflow-wrap: break-word; /* Ensure wrapping within bounds */
+}
+
+span {
+    word-wrap: break-word;  /* Ensures that the parent container allows wrapping of the child spans */
+    overflow-wrap: break-word; /* Same for overflow */
+}
+
 </style>

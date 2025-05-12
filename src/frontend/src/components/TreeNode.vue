@@ -1,225 +1,211 @@
 <template>
-    <div class="tree-node"
-        @mouseover.stop="$emit('highlight', node.id)"
-        @mouseleave.stop="isHovering = false; $emit('highlight', -1)"
+    <div 
+        draggable="true"
+        class="tree-node draggable"
+        :class="{ 'dragover': $store.getters.isDragOver(node.id) }"
+        @contextmenu.stop = "openMenu"
+        @mouseover.stop="$store.commit('elementHighlighted', node.id)"
+        @mouseleave.stop="$store.commit('elementHighlighted', -1)"
+        @dragstart.stop="onDragStart"
+        @dragend.stop="onDragEnd"
+        @dragover.stop="onDragOver"
+        @dragleave.stop="onDragLeave"
     >
         <div 
             class="node-header" 
-            :class="{ expandable: hasChildren }" 
             @click="toggleExpand"
-            @mouseover="isHovering = true;"
-            @mouseleave="isHovering = false;"
         >
-            <span v-if="hasChildren" class="toggle-icon">{{ isExpanded ? "▼" : "▶" }}</span>
-            <component
+            <span v-if="hasChildren || isConstructed" class="toggle-icon">{{ isExpanded ? "▼" : "▶" }}</span>
+            <span
                 v-if="node.tag" 
-                :is="editing['tag'] ? 'input' : 'span'"
-                class="node-tag editable"
+                class="node-tag"
                 ref="tag"
-                @keyup.enter="toggleEditing('tag')"
-                @blur="toggleEditing('tag')"
-                @dblclick="toggleEditing('tag')"                
             >
-                {{ editing["tag"] ? '' : node.tag[1] }}
-            </component>
-            <component
+               {{ node.tag[1] }}
+            </span>
+            <span
                 v-if="node.label"
-                :is="editing['label'] ? 'input' : 'span'"
-                class="node-tag editable"
+                class="node-label"
                 ref="label"
-                @keyup.enter="toggleEditing('label')"
-                @blur="toggleEditing('label')"
-                @dblclick="toggleEditing('label')"                  
             >
-                {{ editing["label"] ? '' : node.label }}
-            </component>
-            <component
+                {{ node.label }}
+            </span>
+            <span
                 v-if="node.length" 
-                :is="editing['length'] ? 'input' : 'span'"
-                class="node-length editable"
+                class="node-length"
                 ref="length"
-                @keyup.enter="toggleEditing('length')"
-                @blur="toggleEditing('length')"
-                @dblclick="toggleEditing('length')"
             >
-                ({{ editing["length"] ? '' : node.length[1] }})
-            </component>
-            <component
+                {{ node.length[1] }}
+            </span>
+            <span
                 v-if="node.content"
-                :is="editing['content'] ? 'input' : 'span'"
-                class="node-content editable" 
+                class="node-content" 
                 ref="content"
-                @keyup.enter="toggleEditing('content')"
-                @blur="toggleEditing('content')"
-                @dblclick="toggleEditing('content')"
             >
-                {{ editing['content'] ? '' : node.content[1] }}
-            </component>
-            <v-spacer></v-spacer>
-            <v-btn 
-                v-if="node.tag && isHovering"
-                size="small"
-                @click.stop="showDialog = true"
-            >
-                <v-icon>mdi-close</v-icon>
-            </v-btn>
+                <span
+                    v-if="node.content[1].length < 40 || expandedContent"
+                    @click="expandedContent = false"
+                >
+                    {{ node.content[1] }}
+                </span>
+                <span
+                    v-else
+                    @click="expandedContent = true"
+                >
+                    {{ node.content[1].slice(0, 20) }}...{{ node.content[1].slice(-20) }}
+                </span>
+            </span>
         </div>
-        <div v-if="isExpanded && hasChildren" class="children">
+        <div v-if="isExpanded && (hasChildren || isConstructed)" class="children">
             <TreeNode 
                 v-for="(child, index) in node.children" 
                 :key="index" 
-                :tree="tree"
-                :node="nodeFromId(child)" 
+                :node="$store.getters.getNodeFromId(child)" 
                 @highlight="(id) => $emit('highlight', id)"
-                @add="(id) => $emit('add', id)"
-                @delete="(id) => $emit('delete', id)"
-                @change="(id, field, value) => $emit('change', id, field, value)"
+                @rightclick="(x, y, id) => $emit('rightclick', x, y, id)"
             />
-            <div class="tree-node">
-                <div class="node-header">
-                    <v-btn
-                        size="small"
-                        @click="$emit('add', node.id)"
-                    >
-                        <v-icon>mdi-plus</v-icon> Add element
-                    </v-btn>
-                </div>
-            </div>
         </div>
     </div>
-    <v-dialog v-model="showDialog" max-width="400px">
-        <v-card>
-            <v-card-title class="headline">Confirm Deletion</v-card-title>
-            <v-card-text>Are you sure you want to delete this item?</v-card-text>
-            <v-card-actions>
-                <v-spacer></v-spacer>
-                <v-btn color="grey" @click="showDialog = false">Cancel</v-btn>
-                <v-btn color="red" @click="deleteNode">Delete</v-btn>
-            </v-card-actions>
-        </v-card>
-    </v-dialog>
 </template>
 
 <script>
-import { nextTick } from "vue";
-import { asn1Types } from "@/utils/parse";
-
 export default {
-props: {
-    tree: Array,
-    node: Object,
-},
-emits: ["delete", "add", "change", "highlight"],
-data() {
-    return {
-        isExpanded: false, // Start collapsed
-        editing: {
-            "tag": false,
-            "length": false,
-            "content": false,
-            "label": false
+    props: {
+        node: Object
+    },
+    emits: ["rightclick"],
+    data() {
+        return {
+            expandedContent: false,
+        };
+    },
+    computed: {
+        hasChildren() {
+            return this.node.children && this.node.children.length > 0;
         },
-        showDialog: false,
-        isHovering: false
-    };
-},
-computed: {
-    hasChildren() {
-        return this.node.children && this.node.children.length > 0;
+        isConstructed() {
+            return this.node.tag[0] == 48 || this.node.tag[0] == 49;
+        },
+        isExpanded() {
+            return this.$store.getters.isExpanded(this.node.id);
+        },
     },
-},
-methods: {
-    toggleExpand() {
-        if (this.hasChildren) {
-            this.isExpanded = !this.isExpanded;
+    mounted: function () {
+        if (this.node.children.length < 2) {
+            this.$store.commit("expandedSet", {
+                id: this.node.id,
+                expanded: true
+            });
+        } else {
+            this.$store.commit("expandedSet", {
+                id: this.node.id,
+                expanded: false
+            });
         }
     },
-    nodeFromId: function(id) {
-        let candidates = this.tree.filter((node) => node.id == id)
-        if (candidates.length > 0) {
-            return candidates[0]
-        } else {
-            return {
-                children: []
-            }
-        }  
-    },
-    deleteNode: function() {
-        this.$emit("delete", this.node.id)
-    },
-    async toggleEditing(field) {
-        this.editing[field] = !this.editing[field]
+    methods: {
+        openMenu (event) {
+            event.preventDefault();
+            this.$emit("rightclick", event.clientX, event.clientY, this.node.id);
+        },
+        onDragStart(event) {
+            // Make the dragged element semi-transparent
+            event.target.style.opacity = "0.4"; 
+        },
+        onDragEnd(event) {
+            // Reset opacity
+            event.target.style.opacity = ""; 
 
-        if (this.editing[field]) {
-            await nextTick();
-            this.$refs[field].focus()
-            this.$refs[field].value = field != "label" ? this.node[field][1] : this.node.label
-        } else {
-            if (this.$refs[field].value != this.node[field][1]) {
-                if ((field != "content") || asn1Types[this.node.tag[0]]["rules"](this.$refs[field].value)) {
-                    this.$emit("change", this.node.id, field, this.$refs[field].value)
-                } else {
-                    alert("Invalid value " + this.$refs[field].value + " for field of type " + this.node.tag[1] + "\nIf you intended to input an invalid value please use hex notation (0x...)")
-                }
-                // On change we should either emit an event that triggers recomputation, or just do it from here
+            if (this.$store.getters.target > -1 && this.$store.getters.target != this.node.id) {
+                this.$store.commit("nodeMoved", {
+                    tab: this.$store.state.currentTab,
+                    id: this.node.id,
+                    target: this.$store.getters.target,
+                    index: null
+                })
+
+                this.$store.commit("dragTargetSet", -1);
+            }
+        },
+        onDragOver(event) {
+            // Allow dropping
+            event.preventDefault(); 
+            this.$store.commit("dragTargetSet", this.node.id);
+        },
+        onDragLeave(event) {
+            // Allow dropping
+            event.preventDefault(); 
+            this.$store.commit("dragTargetSet", -1);
+        },
+        toggleExpand() {
+            if (this.hasChildren || this.isConstructed) {
+                this.$store.commit("expandedSet", {
+                    id: this.node.id,
+                    expanded: !this.isExpanded
+                });
             }
         }
-    }
-},
+    },
 };
 </script>
   
 <style scoped>
 .tree-node {
-padding-left: 20px; /* Indent children */
+    padding-left: 20px; /* Indent children */
 }
 
 .node-header {
-cursor: pointer;
-padding: 4px 6px;
-display: flex;
-align-items: center;
-white-space: nowrap;
-}
-
-.expandable {
-font-weight: bold;
+    cursor: pointer;
+    padding: 4px 6px;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
 }
 
 .node-header:hover {
-background-color: rgba(255, 255, 255, 0.1);
+    background-color: rgba(255, 255, 0, 0.1);
+}
+
+.tree-node.dragover {
+    background-color: rgba(255, 255, 0, 0.1); /* Change the background color when dragged over */
 }
 
 .toggle-icon {
-margin-right: 6px;
-color: lightgray;
-cursor: pointer;
+    margin-right: 6px;
+    color: lightgray;
+    cursor: pointer;
 }
 
 .node-tag {
-font-weight: bold;
-color: #61dafb;
+    font-weight: bold;
+    color: #61dafb;
+    padding: 5px;
+}
+
+.node-label {
+    color: #0da860;
+    padding: 5px;
 }
 
 .node-length {
-color: #ffa500;
+    color: #ffa500;
+    padding: 5px;
 }
 
 .node-content {
-color: #ff79c6;
+    color: #ff79c6;
+    padding: 5px;
 }
 
 .children {
-border-left: 2px solid rgba(255, 255, 255, 0.2);
-margin-left: 10px;
-padding-left: 10px;
+    border-left: 2px solid rgba(255, 255, 255, 0.2);
+    margin-left: 10px;
+    padding-left: 10px;
 }
 
-.editable {
-  cursor: pointer;
-  padding: 5px;
-  border: 1px solid transparent;
+.draggable {
+    cursor: move;
+    user-select: none;
 }
-
 </style>
   
