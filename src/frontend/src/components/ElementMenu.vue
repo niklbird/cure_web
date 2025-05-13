@@ -228,7 +228,7 @@ export default {
 
             // Check if the content is valid for the given type.
             if (this.type && this.content) {
-                if (!asn1Types[this.type].rules(this.content)) {
+                if (!ASN1_TYPES[this.type].rules(this.content)) {
                     if (!confirm("The content is not valid for the selected type. Do you still want to continue?")) {
                         return false;
                     } else {
