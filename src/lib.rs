@@ -2,11 +2,13 @@ use std::{fs, str::from_utf8};
 use chrono::Utc;
 use cure_pp::{cure_object::CureObject, cure_repo, repository_util::{load_random_key, random_fname}};
 use regex::Regex;
+use tar::Builder;
 use wasm_bindgen::prelude::*;
 use cure_asn1::{rpki::{ObjectType, RpkiObject}, tree_parser::Tree};
 use std::{fs::{File}, io::{Cursor, Write}};
 
-use zip::{write::FileOptions, ZipWriter};
+use flate2::write::GzEncoder;
+use flate2::Compression;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Node{
@@ -57,23 +59,49 @@ fn is_base64(s: &str) -> bool {
     base64_regex.is_match(s)
 }
 
-fn create_zip_in_memory(files: Vec<(String, Vec<u8>)>) -> zip::result::ZipResult<Vec<u8>> {
+fn create_tar_gz_in_memory(files: Vec<(String, Vec<u8>)>) -> std::io::Result<Vec<u8>> {
     let buffer = Vec::new();
     let cursor = Cursor::new(buffer);
-    let mut zip = ZipWriter::new(cursor);
-
-    let options = FileOptions::default()
-        .compression_method(zip::CompressionMethod::Stored) // or .Deflated
-        .unix_permissions(0o755);
+    
+    // Wrap cursor in GzEncoder for gzip compression
+    let encoder = GzEncoder::new(cursor, Compression::default());
+    
+    // Create tar archive builder on top of the encoder
+    let mut tar = Builder::new(encoder);
 
     for (path, contents) in files {
-        zip.start_file(path, options)?;
-        zip.write_all(&contents)?;
+        let mut header = tar::Header::new_gnu();
+        header.set_path(&path)?;
+        header.set_size(contents.len() as u64);
+        header.set_mode(0o755);
+        header.set_cksum();
+        
+        tar.append(&header, contents.as_slice())?;
     }
 
-    let cursor = zip.finish()?;
-    Ok(cursor.into_inner()) // this gives you the Vec<u8>
+    // Finish writing the tar archive and get the inner Vec<u8>
+    let encoder = tar.into_inner()?;     // Finish tar
+    let cursor = encoder.finish()?;      // Finish gzip
+    Ok(cursor.into_inner())              // Return the buffer
 }
+
+// fn create_zip_in_memory(files: Vec<(String, Vec<u8>)>) -> zip::result::ZipResult<Vec<u8>> {
+//     let buffer = Vec::new();
+//     let cursor = Cursor::new(buffer);
+//     let mut zip = ZipWriter::new(cursor);
+
+//     let options = FileOptions::default()
+//         .compression_method(zip::CompressionMethod::Stored) // or .Deflated
+//         .unix_permissions(0o755);
+
+//     for (path, contents) in files {
+//         zip.start_file(path, options)?;
+//         zip.write_all(&contents)?;
+//     }
+
+//     let cursor = zip.finish()?;
+//     Ok(cursor.into_inner()) // this gives you the Vec<u8>
+// }
 
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -141,16 +169,43 @@ impl State{
 
         Ok(State{
             tree: tree.unwrap(),
-        })
+        }) 
     }
 
+    #[wasm_bindgen]
+    pub fn drag_node(&mut self, id: usize, new_parent: usize, child_index: usize) -> Result<(), String> 
+    {
+        if self.tree.tokens.get(&new_parent).is_none(){
+            return Err("Invalid node".to_string());
+        }
+
+        if self.tree.tokens.get(&id).is_none(){
+            return Err("Invalid node".to_string());
+        }
+
+        // Remove the node from its current parent
+        if let Some(parent_token) = self.tree.tokens.get_mut(&self.tree.tokens[&id].parent.clone()) {
+            parent_token.children.retain(|&child| child != id);
+        }
+
+        // Add the node to the new parent
+        self.tree.tokens.get_mut(&new_parent).unwrap().children.insert(child_index, id);
+        self.tree.tokens.get_mut(&id).unwrap().parent = new_parent;
+        self.tree.taint_parents(id);
+        self.tree.fix_sizes(true);
+        Ok(())
+    }
+
+
+
+    
     #[wasm_bindgen]
     pub fn repositorify(&self) -> Vec<u8>{
         let (repo_files, tal, ca_cert) = self.into_rpki_repo();
         let mut files = repo_files.clone();
         files.push(("ta.tal".to_string(), tal));
         files.push(("data/repo/ta/ta.cer".to_string(), ca_cert));
-        create_zip_in_memory(files).unwrap_or_default()
+        create_tar_gz_in_memory(files).unwrap_or_default()
     }
 
     // (Snapshot and Notification, TAL, CA Cert)
