@@ -1,8 +1,16 @@
 /* tslint:disable */
 /* eslint-disable */
+export class RrdpEntry {
+  free(): void;
+  constructor(uri: string, content: string);
+  readonly uri: string;
+  readonly content: string;
+}
 export class State {
   free(): void;
   constructor(data: string);
+  drag_node(id: number, new_parent: number, child_index: number): void;
+  repositorify(): Uint8Array;
   get_nodes(): string;
   add_node(typ: number, value: string, parent: number, label: string): void;
   adapt_node_content(id: number, new_content: string): void;
@@ -20,8 +28,14 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 
 export interface InitOutput {
   readonly memory: WebAssembly.Memory;
+  readonly __wbg_rrdpentry_free: (a: number, b: number) => void;
+  readonly rrdpentry_new: (a: number, b: number, c: number, d: number) => number;
+  readonly rrdpentry_uri: (a: number) => [number, number];
+  readonly rrdpentry_content: (a: number) => [number, number];
   readonly __wbg_state_free: (a: number, b: number) => void;
   readonly state_new: (a: number, b: number) => [number, number, number];
+  readonly state_drag_node: (a: number, b: number, c: number, d: number) => [number, number];
+  readonly state_repositorify: (a: number) => [number, number];
   readonly state_get_nodes: (a: number) => [number, number];
   readonly state_add_node: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number];
   readonly state_adapt_node_content: (a: number, b: number, c: number, d: number) => [number, number];
@@ -33,11 +47,13 @@ export interface InitOutput {
   readonly state_export_base64: (a: number) => [number, number];
   readonly state_encode_store: (a: number) => [number, number];
   readonly state_from_stored: (a: number, b: number) => [number, number, number];
-  readonly __wbindgen_export_0: WebAssembly.Table;
+  readonly __wbindgen_exn_store: (a: number) => void;
+  readonly __externref_table_alloc: () => number;
+  readonly __wbindgen_export_2: WebAssembly.Table;
   readonly __wbindgen_malloc: (a: number, b: number) => number;
   readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
-  readonly __externref_table_dealloc: (a: number) => void;
   readonly __wbindgen_free: (a: number, b: number, c: number) => void;
+  readonly __externref_table_dealloc: (a: number) => void;
   readonly __wbindgen_start: () => void;
 }
 
