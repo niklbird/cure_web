@@ -92,18 +92,20 @@ export default {
     },
     mounted: function () {
         if (this.node.children.length < 2) {
-            this.$store.commit("expandedSet", {
-                id: this.node.id,
-                expanded: true
-            });
+            this.setExpanded(true)
         } else {
-            this.$store.commit("expandedSet", {
-                id: this.node.id,
-                expanded: false
-            });
+            if (!this.$store.getters.isExpanded(this.node.id)) {
+                this.setExpanded(false)
+            }
         }
     },
     methods: {
+        setExpanded(expanded) {
+            this.$store.commit("expandedSet", {
+                id: this.node.id,
+                expanded: expanded
+            });
+        },
         openMenu (event) {
             event.preventDefault();
             this.$emit("rightclick", event.clientX, event.clientY, this.node.id);

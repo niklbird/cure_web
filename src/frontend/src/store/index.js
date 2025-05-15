@@ -29,6 +29,12 @@ export default createStore({
         tabs: (state) => {
             return Object.values(state.tabs)
         },
+        name: (state) => {
+            if (Object.keys(state.tabs).length == 0) {
+                return null
+            }
+            return state.tabs[state.currentTab].name
+        },
         state: (state) => {
             if (Object.keys(state.tabs).length == 0) {
                 return null
@@ -51,6 +57,7 @@ export default createStore({
             if (Object.keys(state.tabs).length == 0) {
                 return false
             }
+
             return state.tabs[state.currentTab].expanded[id]
         },
         isDragOver: (state) => (id) => {
@@ -143,6 +150,7 @@ export default createStore({
             state.tabs[state.currentTab].positions[context.id] = [context.top, context.height]
         },
         expandedSet: function (state, context) {
+            console.log(context)
             state.tabs[state.currentTab].expanded[context.id] = context.expanded
         },
         nodeMoved: function (state, context) {

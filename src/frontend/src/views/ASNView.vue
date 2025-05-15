@@ -119,6 +119,11 @@
                         >
                             <v-list-item-title>JSON</v-list-item-title>
                         </v-list-item>
+                        <v-list-item
+                            @click="download('repository')"
+                        >
+                            <v-list-item-title>REPOSITORY</v-list-item-title>
+                        </v-list-item>
                     </v-list>
                 </v-menu>                
             </v-btn>
@@ -316,24 +321,29 @@ export default {
         },
         download: function (format) {
             let content = null
-            let fileName = ""
+            let fileName = this.$store.getters.name
             let type = ""
 
             switch (format) {
                 case "binary":
                     content = this.state.export_bin()
-                    fileName = "data.bin"
+                    fileName += ".bin"
                     type = "application/octet-stream"
                     break 
                 case "base64":
                     content = this.state.export_base64()
-                    fileName = "data.txt"
+                    fileName += ".txt"
                     type = "text/plain"
                     break
                 case "json":
                     content = this.state.encode_store()
-                    fileName = "data.json"
+                    fileName += ".json"
                     type = "application/json"
+                    break
+                case "repository":
+                    content = this.state.repositorify()
+                    fileName += ".zip"
+                    type = "text/plain"
                     break
             }
             
