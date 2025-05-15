@@ -9,6 +9,7 @@ export const __wbg_state_free: (a: number, b: number) => void;
 export const state_new: (a: number, b: number) => [number, number, number];
 export const state_drag_node: (a: number, b: number, c: number, d: number) => [number, number];
 export const state_repositorify: (a: number) => [number, number];
+export const state_load_example: (a: number, b: number) => [number, number, number];
 export const state_get_nodes: (a: number) => [number, number];
 export const state_add_node: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number];
 export const state_adapt_node_content: (a: number, b: number, c: number, d: number) => [number, number];

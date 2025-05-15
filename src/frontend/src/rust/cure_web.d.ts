@@ -11,6 +11,7 @@ export class State {
   constructor(data: string);
   drag_node(id: number, new_parent: number, child_index: number): void;
   repositorify(): Uint8Array;
+  static load_example(typ: string): State;
   get_nodes(): string;
   add_node(typ: number, value: string, parent: number, label: string): void;
   adapt_node_content(id: number, new_content: string): void;
@@ -36,6 +37,7 @@ export interface InitOutput {
   readonly state_new: (a: number, b: number) => [number, number, number];
   readonly state_drag_node: (a: number, b: number, c: number, d: number) => [number, number];
   readonly state_repositorify: (a: number) => [number, number];
+  readonly state_load_example: (a: number, b: number) => [number, number, number];
   readonly state_get_nodes: (a: number) => [number, number];
   readonly state_add_node: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number];
   readonly state_adapt_node_content: (a: number, b: number, c: number, d: number) => [number, number];
