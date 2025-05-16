@@ -241,7 +241,7 @@
 </template>
 
 <script>
-import init, { State } from '@/rust/cure_web.js'
+import init from '@/rust/cure_web.js'
 import ByteNode from '@/components/ByteNode.vue'
 import TreeNode from '@/components/TreeNode.vue'
 import UploadCard from '@/components/UploadCard.vue'
@@ -374,13 +374,11 @@ export default {
             URL.revokeObjectURL(link.href);
         },
         loadExample: function (type) {
-            const state = State.load_example(type)
-            const tree = JSON.parse(state.get_nodes())
             this.$store.commit("tabRenamed", type + "_example")
-            that.$store.commit("stateSet", {
-                tab: that.$store.state.currentTab,
-                state: state,
-                tree: tree
+            this.$store.commit("stateSet", {
+                tab: this.$store.state.currentTab,
+                type: "example",
+                data: type
             })                        
         },
         handleKeydown (event) {
