@@ -150,7 +150,6 @@ export default createStore({
             state.tabs[state.currentTab].positions[context.id] = [context.top, context.height]
         },
         expandedSet: function (state, context) {
-            console.log(context)
             state.tabs[state.currentTab].expanded[context.id] = context.expanded
         },
         nodeMoved: function (state, context) {

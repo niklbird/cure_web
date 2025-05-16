@@ -1,4 +1,10 @@
 <template>
+    <v-overlay
+        v-model="loading"
+        style="align-items: center; justify-content: center;"
+    >
+        <v-progress-circular indeterminate color="primary"></v-progress-circular>
+    </v-overlay>
     <UploadCard 
         v-if="tabs.length == 0"
     ></UploadCard>
@@ -253,7 +259,8 @@ export default {
             bytesTop: 0,
             bytePosition: {},
             load: false,
-            edit: false
+            edit: false,
+            loading: false
         };
     },
     components: {
@@ -324,6 +331,7 @@ export default {
             let fileName = this.$store.getters.name
             let type = ""
 
+            this.loading = true
             switch (format) {
                 case "binary":
                     content = this.state.export_bin()
@@ -342,10 +350,11 @@ export default {
                     break
                 case "repository":
                     content = this.state.repositorify()
-                    fileName += ".zip"
-                    type = "text/plain"
+                    fileName += ".tar.gz"
+                    type = "application/x-gzip"
                     break
             }
+            //this.loading = false
             
             // Create a Blob with the content
             const blob = new Blob([content], { type: type });
@@ -360,6 +369,7 @@ export default {
             link.click();
             
             // Cleanup
+            this.loading = false
             document.body.removeChild(link);
             URL.revokeObjectURL(link.href);
         },
