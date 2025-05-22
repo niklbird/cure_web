@@ -1,10 +1,10 @@
-🧬 CURE ASN.1 Web Parser for RPKI and Beyond
+# 🧬 CURE ASN.1 Web Parser for RPKI and Beyond
 
 A fast, modern web-based ASN.1 parser and editor — built with a strong focus on RPKI but fully compatible with any BER/DER/CER-encoded ASN.1 objects.
 Edit and encode ASN.1 objects without the need for complicated templates.
 
 
-✨ Features
+## ✨ Features
 
     🔍 ASN.1 Object Parsing
     Supports all major encoding rules: BER, DER, and CER — seamlessly decode any ASN.1 structure.
@@ -24,7 +24,7 @@ Edit and encode ASN.1 objects without the need for complicated templates.
     🌐 Web-Based Interface
     No installation required — accessible through your browser.
 
-🚀 Use Cases
+## 🚀 Use Cases
 
     Validate custom RPKI objects in a real-world RP context.
 
@@ -34,7 +34,7 @@ Edit and encode ASN.1 objects without the need for complicated templates.
 
     Quickly prototype and verify ASN.1 encodings for standards development.
 
-📚 Tech Stack
+## 📚 Tech Stack
 
     Frontend: vue.js
 
@@ -42,10 +42,11 @@ Edit and encode ASN.1 objects without the need for complicated templates.
 
     Encoding/Parsing: cure_asn1 for parsing, cure_pp for nesting objects, cure_daemon for testing objects
 
-🤝 Contributions
+## 🤝 Contributions
 
 This tool is in its alpha version and contributions are very welcome! Please open an issue or pull request if you’d like to add functionality, fix a bug, or improve performance/documentation.
-📄 License
+
+## 📄 License
 
 MIT License
 
