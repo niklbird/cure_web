@@ -17,30 +17,27 @@ Edit and encode ASN.1 objects without the need for complicated templates.
 
     📦 RPKI Integration
 
-        Embed ASN.1 objects into a fully valid RPKI repository structure for testing.
+        - Embed ASN.1 objects into a fully valid RPKI repository structure for testing.
 
-        Directly interact with RPKI relying parties (RPs) to validate your objects live.
+        - Directly interact with RPKI relying parties (RPs) to validate your objects live.
 
     🌐 Web-Based Interface
     No installation required — accessible through your browser.
 
 ## 🚀 Use Cases
 
-    Validate custom RPKI objects in a real-world RP context.
-
-    Explore and debug arbitrary ASN.1 objects visually.
-
-    Test how changes in encoded data affect structure and meaning.
-
-    Quickly prototype and verify ASN.1 encodings for standards development.
+    - Validate custom RPKI objects in a real-world RP context.
+    - Explore and debug arbitrary ASN.1 objects visually.
+    - Test how changes in encoded data affect structure and meaning.
+    - Quickly prototype and verify ASN.1 encodings for standards development.
 
 ## 📚 Tech Stack
 
-    Frontend: vue.js
+    - Frontend: vue.js
 
-    Backend: Rust WASM
+    - Backend: Rust WASM
 
-    Encoding/Parsing: cure_asn1 for parsing, cure_pp for nesting objects, cure_daemon for testing objects
+    - Encoding/Parsing: cure_asn1 for parsing, cure_pp for nesting objects, cure_daemon for testing objects
 
 ## 🤝 Contributions
 
