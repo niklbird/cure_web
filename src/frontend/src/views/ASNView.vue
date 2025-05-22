@@ -1,4 +1,10 @@
 <template>
+    <v-overlay
+        v-model="loading"
+        style="align-items: center; justify-content: center;"
+    >
+        <v-progress-circular indeterminate color="primary"></v-progress-circular>
+    </v-overlay>
     <UploadCard 
         v-if="tabs.length == 0"
     ></UploadCard>
@@ -235,7 +241,7 @@
 </template>
 
 <script>
-import init, { State } from '@/rust/cure_web.js'
+import init from '@/rust/cure_web.js'
 import ByteNode from '@/components/ByteNode.vue'
 import TreeNode from '@/components/TreeNode.vue'
 import UploadCard from '@/components/UploadCard.vue'
@@ -253,7 +259,8 @@ export default {
             bytesTop: 0,
             bytePosition: {},
             load: false,
-            edit: false
+            edit: false,
+            loading: false
         };
     },
     components: {
@@ -324,6 +331,7 @@ export default {
             let fileName = this.$store.getters.name
             let type = ""
 
+            this.loading = true
             switch (format) {
                 case "binary":
                     content = this.state.export_bin()
@@ -342,10 +350,11 @@ export default {
                     break
                 case "repository":
                     content = this.state.repositorify()
-                    fileName += ".zip"
-                    type = "text/plain"
+                    fileName += ".tar.gz"
+                    type = "application/x-gzip"
                     break
             }
+            //this.loading = false
             
             // Create a Blob with the content
             const blob = new Blob([content], { type: type });
@@ -360,17 +369,16 @@ export default {
             link.click();
             
             // Cleanup
+            this.loading = false
             document.body.removeChild(link);
             URL.revokeObjectURL(link.href);
         },
         loadExample: function (type) {
-            const state = State.load_example(type)
-            const tree = JSON.parse(state.get_nodes())
             this.$store.commit("tabRenamed", type + "_example")
-            that.$store.commit("stateSet", {
-                tab: that.$store.state.currentTab,
-                state: state,
-                tree: tree
+            this.$store.commit("stateSet", {
+                tab: this.$store.state.currentTab,
+                type: "example",
+                data: type
             })                        
         },
         handleKeydown (event) {

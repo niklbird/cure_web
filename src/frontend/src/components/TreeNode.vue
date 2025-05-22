@@ -2,18 +2,18 @@
     <div 
         draggable="true"
         class="tree-node draggable"
-        :class="{ 'dragover': $store.getters.isDragOver(node.id) }"
         @contextmenu.stop = "openMenu"
         @mouseover.stop="$store.commit('elementHighlighted', node.id)"
         @mouseleave.stop="$store.commit('elementHighlighted', -1)"
         @dragstart.stop="onDragStart"
         @dragend.stop="onDragEnd"
-        @dragover.stop="onDragOver"
-        @dragleave.stop="onDragLeave"
     >
         <div 
-            class="node-header" 
+            class="node-header"  
+            :class="{ 'dragover': $store.getters.isDragOver(node.id) }"
             @click="toggleExpand"
+            @dragover.stop="onDragOver"
+            @dragleave.stop="onDragLeave"
         >
             <span v-if="hasChildren || isConstructed" class="toggle-icon">{{ isExpanded ? "▼" : "▶" }}</span>
             <span
@@ -57,6 +57,8 @@
             </span>
         </div>
         <div v-if="isExpanded && (hasChildren || isConstructed)" class="children">
+            <div v-if="node.id != node.parent">
+            </div>
             <TreeNode 
                 v-for="(child, index) in node.children" 
                 :key="index" 
@@ -65,6 +67,10 @@
                 @rightclick="(x, y, id) => $emit('rightclick', x, y, id)"
             />
         </div>
+        <div 
+            v-if="node.id != node.parent"
+            :class="{ 'children': true, 'dragover': $store.getters.isDragOver(node.id) }"
+        ></div>
     </div>
 </template>
 

@@ -128,6 +128,8 @@ export default createStore({
             let app_state = null;
             if (context.type == "json") {
                 app_state = State.from_stored(context.data)
+            } else if (context.type == "example") {
+                app_state = State.load_example(context.data)
             } else {
                 app_state = new State(context.data)
             }
@@ -150,7 +152,6 @@ export default createStore({
             state.tabs[state.currentTab].positions[context.id] = [context.top, context.height]
         },
         expandedSet: function (state, context) {
-            console.log(context)
             state.tabs[state.currentTab].expanded[context.id] = context.expanded
         },
         nodeMoved: function (state, context) {
