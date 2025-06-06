@@ -34,6 +34,7 @@
                 {{ dec2hex(byte) }}
             </span>            
         </span>
+        <!-- The bytes of children are rendered recursively -->
         <ByteNode
             v-for="(nodeId, idx) in node.children"
             :key="idx"
@@ -43,17 +44,23 @@
 </template>
 
 <script>
+// This component renders a node as a series of spans, each representing a byte in hexadecimal format.
+// Children nodes are rendered recursively.
+// Currently selected node is highlighted and scrolled to in the byte view.
+
 export default {
     props: {
         node: Object
     },
-    emits: ["position"],
     methods: {
+        // Convert decimal to hexadecimal with leading zero
         dec2hex: function (i) {
             return (i+0x10000).toString(16).substr(-2).toUpperCase();
         },
     },
     mounted: function () {
+        // Once a node is mounted, we store its position
+        // Enables automatic scrolling to the node when highlighted
         const target = this.$refs.span
         const targetRect = target.getBoundingClientRect();
 
@@ -68,18 +75,6 @@ export default {
 </script>
 
 <style>
-.tag {
-    color: #61dafb;
-}
-
-.length {
-    color: #ffa500;
-}
-
-.content {
-    color: #ff79c6;/* White text for readability */
-}
-
 .highlighted {
     background-color: gray;
     font-weight: bold;

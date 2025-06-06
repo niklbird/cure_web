@@ -1,3 +1,12 @@
+// This file contains some information used in the application on all existing ASN.1 types.
+// [rules] is a function that checks if the given value is valid for the type.
+// [example] and [description] provide information on the contents of the type shown in a help text in the UI,
+// the contents are taken from https://www.oss.com/asn1/resources/asn1-made-simple/asn1-quick-reference.html
+// [completions] is an array of possible values for types with a limited set of values.
+// [transform] is an object with different functions turning readable representations of given values into valid ASN.1 values,
+// for example, the BIT STRING type is often used to represent IP addresses, the user of the app can enter an IP address and
+// the transform function will convert it to a valid ASN.1 BIT STRING value.
+
 export const ASN1_TYPES = {
     1: {
         name: "BOOLEAN",
@@ -10,8 +19,8 @@ export const ASN1_TYPES = {
             You can define new types based on this built-in type.
         `,
         completions: [
-            true,
-            false
+            "TRUE",
+            "FALSE"
         ],
         transform: null
     },
@@ -59,19 +68,25 @@ export const ASN1_TYPES = {
         `,
         completions: [],
         transform: {
-            "ipv4": (value) => {
-                // Convert IP string to binary
-                const parts = value.split(".");
-                if (parts.length !== 4) return null;
-                const binaryParts = parts.map(part => parseInt(part).toString(2).padStart(8, '0'));
-                return binaryParts.join("");
+            "ipv4": {
+                "regex": /^(\d{1,3}\.){3}\d{1,3}$/,
+                "converter": (value) => {
+                    // Convert IP string to binary
+                    const parts = value.split(".");
+                    if (parts.length !== 4) return null;
+                    const binaryParts = parts.map(part => parseInt(part).toString(2).padStart(8, '0'));
+                    return binaryParts.join("");
+                },
             },
-            "ipv6": (value) => {
-                // Convert IPv6 string to binary
-                const parts = value.split(":");
-                if (parts.length !== 8) return null;
-                const binaryParts = parts.map(part => parseInt(part, 16).toString(2).padStart(16, '0'));
-                return binaryParts.join("");
+            "ipv6": {
+                "regex": /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/,
+                "converter": (value) => {
+                    // Convert IPv6 string to binary
+                    const parts = value.split(":");
+                    if (parts.length !== 8) return null;
+                    const binaryParts = parts.map(part => parseInt(part, 16).toString(2).padStart(16, '0'));
+                    return binaryParts.join("");
+                }
             }
         }
     },
@@ -378,7 +393,7 @@ export const ASN1_TYPES = {
         name: "UTCTime",
         rules: (value) => {
             // Matches "YYMMDDhhmm[ss]Z" or "YYMMDDhhmm[ss](+|-)hhmm"
-            return /^(\d{2})(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])([01]\d|2[0-3])([0-5]\d)([0-5]\d)?(Z|[+-](0\d|1[0-3])[0-5]\d)$/.test(value);
+            return /^(\d{2})(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])([01]\d|2[0-3])([0-5]\d)([0-5]\d)?(Z|[+-](0\d|1[0-3]):?[0-5]\d)$/.test(value);
         },
         example: "8804152030Z", //(April 15, 1988, 20:30 UTC)
         description: `
@@ -560,4 +575,5 @@ export const ASN1_TYPES = {
     }
 }
 
+// List of all time related ASN.1 types, so that a time picker can be shown in the UI
 export const TIME_TYPES = ["UTCTime", "GeneralizedTime", "DATE", "TIME-OF-DAY", "DATE-TIME", "DURATION"]

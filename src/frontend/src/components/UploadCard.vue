@@ -2,8 +2,9 @@
     <v-container
         fluid
     >
+        <!-- Dialog to confirm if the file should be opened in a new tab or the current tab -->
         <v-dialog
-            v-model="openDialog" 
+            v-model="dialog" 
             max-width="500"
         >
             <v-card title="Open in new tab?">
@@ -24,13 +25,14 @@
                         This tab
                     </v-btn>
                     <v-btn
-                        @click="() => (openDialog = false)"
+                        @click="() => (dialog = false)"
                     >
                         Cancel
                     </v-btn>
                 </v-card-actions>
                 </v-card>
         </v-dialog>        
+        <!-- Drop zone with handlers for paste, drag and drop and clicks -->
         <div
             class="drop-zone"
             :class="{ 'hovered': dragOver }"  
@@ -51,31 +53,31 @@
                     </span>
                 </div>
             </span>
-            <input type="file" ref="fileInput" class="hidden" @change="handleFileSelect" />
+            <!-- File input is hidden but triggered when clicking anywhere in the dropzone -->
+            <input type="file" ref="fileInput" style="display: none" @change="handleFileSelect" />
         </div>
     </v-container>    
 </template>
 
 <script>
 export default {
+    // Component consists of a drop zone for file upload, drag & drop functionality, and paste support for base64 content.
     data() {
         return {
             data: null,
             file: null,
+            // Flag to indicate if a file is being dragged over the drop zone
             dragOver: false,
-            openDialog: false
+            // Flag to indicate if dialog window should be shown
+            dialog: false
         };
     },
-    emits: ["uploadDone"],
-    computed: {
-        tabs() {
-            return this.$store.getters.tabs
-        }
-    },
+    emits: ["upload"],
     methods: {
         open: function (newTab) {
-            this.openDialog = false
+            this.dialog = false
             if (newTab) {
+                // File should be opened in a new tab
                 this.$store.commit("tabAdded", this.file.name || "Unnamed")
                 this.$store.commit("stateSet", {
                     tab: this.$store.state.currentTab,
@@ -83,28 +85,36 @@ export default {
                     type: this.file.name.endsWith(".json") ? "json" : "hex"
                 })
             } else {
+                // File should be opened in the current tab
+                // Rename tab to the current file name ?
+                // this.$store.commit("tabRenamed", this.file.name || "Unnamed")
                 this.$store.commit("stateSet", {
                     tab: this.$store.state.currentTab,
                     data: this.data,
                     type: this.file.name.endsWith(".json") ? "json" : "hex"
                 })
             }
-            this.$emit("uploadDone")
+            this.$emit("upload")
         },
-        uploadFile: function () {
+        uploadFile: function (multiple) {
             const reader = new FileReader();
+            // To access `this` inside the reader's onload function, we need to store it in a variable
+            // because the context of `this` changes inside the function.
             const that = this
 
+            // Two kinds of files are supported:
+            // - JSON project files (created when using the EXPORT JSON button)
+            // - Binary ASN files
             if (this.file.name.endsWith(".json")) {
                 reader.onload = async function (e) {
                     try {
                         const enc = new TextDecoder("utf-8");
                         that.data = enc.decode(e.target.result);
 
-                        if (!that.tabs.length == 0) {
+                        if (multiple || !that.$store.getters.tabs.length == 0) {
                             that.open(true)
                         } else {
-                            that.openDialog = true
+                            that.dialog = true
                         }
                     } catch (err) {
                         console.log("Error processing JSON file: " + err)
@@ -125,10 +135,10 @@ export default {
                             // Join into a single string
                             .join(""); 
                         that.data = hexString
-                        if (that.tabs.length == 0) {
+                        if (multiple || that.$store.getters.tabs.length == 0) {
                             that.open(true)
                         } else {
-                            that.openDialog = true
+                            that.dialog = true
                         }
                     } catch (err) {
                         console.log("Error processing WASM module: " + err)
@@ -145,27 +155,35 @@ export default {
             reader.readAsArrayBuffer(this.file);  // Use ArrayBuffer for raw binary
         },
         triggerFileInput: function () {
+            // Clicking anywhere in the drop zone will trigger the file input click
+            // and open the file dialog
             this.$refs.fileInput.click()
         },
         handleFileSelect: function (event) {
-            const selectedFile = event.target.files[0]
-            this.file = selectedFile
-            this.uploadFile()
+            // Handle file selection from the file input
+            for (const file of event.target.files) {
+                this.file = file
+                this.uploadFile(event.target.files.length > 1)
+            }
         },
         handleDrop: function(event) {
+            // Handle file drop into the drop zone
             this.dragOver = false;
-            const droppedFile = Array.from(event.dataTransfer.files)[0]
-            this.file = droppedFile
-            this.uploadFile()
+            for (const file of event.dataTransfer.files) {
+                this.file = file
+                this.uploadFile(event.dataTransfer.files.length > 1)
+            }
         },
         handlePaste: function(event) {
-            if (!event.clipboardData || !event.clipboardData.files.length) {
+            if (!event.clipboardData) return
+            if (!event.clipboardData.files.length) {
                 // No files in clipboard
-                // Paste text
+                // -> Try to paste text
                 try {
                     const text = event.clipboardData.getData('text/plain');
 
-                    // Convert binary string to Uint8Array
+                    // The input is expected to be a base64 encoded string
+                    // Convert base64 string to Uint8Array
                     const uint8Array = Uint8Array.fromBase64(text);
 
                     // Convert to uppercase hex string
@@ -174,19 +192,22 @@ export default {
                         .join('');
 
                     this.data = hexString
-                    if (!this.tabs.length == 0) {
+                    if (!this.$store.getters.tabs.length == 0) {
                         this.open(true)   
                     } else {
-                        this.openDialog = true
+                        this.dialog = true
                     }              
                 } catch (err) {
                     console.log("Error processing pasted data: " + err)
                     alert("Error processing pasted data. Please ensure it is valid ASN.1 data.")
                 }
             } else {
-                const pastedFile = event.clipboardData.files[0]
-                this.file = pastedFile
-                this.uploadFile()                
+                // Files in clipboard
+                // -> Paste file
+                for (let file of event.clipboardData.files) {
+                    this.file = file
+                    this.uploadFile(event.clipboardData.files.length > 1)
+                }            
             }
         },
     },
@@ -194,10 +215,7 @@ export default {
 </script>
 
 <style>
-.hidden {
-  display: none;
-}
-
+/* Style of the drop zone, dashed border with centered text and pointer cursor */
 .drop-zone {
     display:flex;
     border: 2px dashed #ccc;
@@ -206,14 +224,15 @@ export default {
     cursor: pointer;
     justify-content: center; 
     align-items: center; 
-    height: 50vh;
 }
 
-.hovered {
-    background-color: #f9f9f9 !important;
-}
-
+/* Style is automatically applied when cursor hovers over the drop zone */
 .drop-zone:hover {
   background-color: #f9f9f9;
+}
+
+/* Style is invoked when a file is dragged over the drop zone */
+.hovered {
+    background-color: #f9f9f9 !important;
 }
 </style>

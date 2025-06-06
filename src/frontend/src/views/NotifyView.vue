@@ -121,51 +121,55 @@
             </v-table>
         </v-col>
     </v-row>    
-  </template>
-  
-  <script>
-  // @ is an alias to /src
-  import axios from 'axios';
+</template>
 
-  export default {
-    name: 'InconsistencyView',
-    components: {},
-    data: () => ({
-      search: '',
-      inconsistencies: [],
-      errors: [],
-      unreachabilities: []
-    }),
-    mounted() {
-      this.getInconsistencies()
-      this.getErrors()
-      this.getUnreachabilities()
+<script>
+// This is currently more of a placeholder as the backend functionality is not fully implemented.
+// The code to setup the backend API is in the `src/backend` directory.
+// If the API provides data is provisionally displayed in tables.
+
+import axios from 'axios';
+
+export default {
+name: 'InconsistencyView',
+components: {},
+data: () => ({
+    search: '',
+    inconsistencies: [],
+    errors: [],
+    unreachabilities: []
+}),
+mounted() {
+    // Fetch data from the API when the component is mounted
+    this.getInconsistencies()
+    this.getErrors()
+    this.getUnreachabilities()
+},
+methods: {
+    async getInconsistencies() {
+        try {
+            const response = await axios.get('http://127.0.0.1:8000/inconsistencies/')
+            this.inconsistencies = response.data
+        } catch (error) {
+            console.error(error)
+        }
     },
-    methods: {
-        async getInconsistencies() {
-            try {
-                const response = await axios.get('http://127.0.0.1:8000/inconsistencies/')
-                this.inconsistencies = response.data
-            } catch (error) {
-                console.error(error)
-            }
-        },
-        async getErrors() {
-            try {
-                const response = await axios.get('http://127.0.0.1:8000/errors/');
-                this.errors = response.data;
-            } catch (error) {
-                console.error(error);
-            }
-        },
-        async getUnreachabilities() {
-            try {
-                const response = await axios.get('http://127.0.0.1:8000/unreachabilities/');
-                this.unreachabilities = response.data;
-            } catch (error) {
-                console.error(error);
-            }
-        },
-    }
-  }
-  </script>
+    async getErrors() {
+        try {
+            const response = await axios.get('http://127.0.0.1:8000/errors/');
+            this.errors = response.data;
+        } catch (error) {
+            console.error(error);
+        }
+    },
+    async getUnreachabilities() {
+        try {
+            const response = await axios.get('http://127.0.0.1:8000/unreachabilities/');
+            this.unreachabilities = response.data;
+        } catch (error) {
+            console.error(error);
+        }
+    },
+}
+}
+</script>

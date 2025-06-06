@@ -12,18 +12,11 @@
                     <v-row>
                         <v-date-picker
                             v-model="date"
-                        >
-
-                        </v-date-picker>
+                        ></v-date-picker>
                         <v-time-picker
                             v-model="time"
                             :use-seconds="true"
-                        >
-
-                        </v-time-picker>
-                        <span>
-                            {{  time }} {{ date }}
-                        </span>
+                        ></v-time-picker>
                     </v-row>
                 </v-card-text>
                 <v-card-actions>
@@ -44,14 +37,12 @@
             style="text-align: center;"
             class="mb-5"
         >
-            {{ edit ? 'Edit Node' : 'Add Node' }}
+            {{ node ? 'Edit Node' : 'Add Node' }}
         </v-card-title>
         <v-card-text>
-            <v-row
-                id="tag"
-            >
+            <v-row>
                 <v-select
-                    v-model="type"
+                    v-model="tag"
                     label="ASN.1 TYPE"
                     :items="Object.entries(types).map((item => {
                         [key, value] = item
@@ -60,46 +51,46 @@
                             'value': key
                         }
                     }))"
-                >
-                </v-select>            
+                ></v-select>            
             </v-row>
-            <v-row
-                id="label"
-            >
+            <v-row>
                 <v-text-field
                     v-model="label"
                     label="Label"
                     placeholder="Label"
                 ></v-text-field>
             </v-row>
-            <v-row
-                id="length"
-            >
+            <v-row>
                 <v-text-field
                     v-model="length"
                     label="Length"
                     placeholder="Length"
-                >
-                </v-text-field> 
+                ></v-text-field> 
             </v-row>
             <v-row
-                v-if="type"
+                v-if="tag != null"
             >
                 <v-col
                     cols="10"
                 >
                     <v-text-field
+                        v-if="types[tag]['completions'].length == 0"
                         v-model="content"
-                        label="Field Value" 
-                        :placeholder="types[type]['example']"
-                    >
-                    </v-text-field>                         
+                        label="Content" 
+                        :placeholder="types[tag]['example']"
+                    ></v-text-field>
+                    <AutoComplete
+                        v-else
+                        v-model="content"
+                        label="Content"
+                        :completions="types[tag]['completions']"
+                    ></AutoComplete>                         
                 </v-col>
                 <v-col
                     cols="2"
                 >
                     <v-btn
-                        v-if="timeTypes.includes(types[type]['name'])"
+                        v-if="timeTypes.includes(types[tag]['name'])"
                         icon
                         @click="pick = true"
                     >
@@ -110,6 +101,7 @@
                     <v-btn
                         icon
                         elevation="0"
+                        style="cursor: pointer"
                     >
                         <v-icon
                             icon="mdi-help-circle"
@@ -119,7 +111,7 @@
                             location="bottom"
                         >
                             <span
-                                v-for="(chunk, index) in types[type]['description'].split('\n')"
+                                v-for="(chunk, index) in types[tag]['description'].split('\n')"
                                 :key="index"
                             >
                                 {{ chunk }}
@@ -135,7 +127,7 @@
             style="position: absolute; bottom: 0; right: 0; left: 0;"
         >
             <v-btn
-                v-if="!edit"
+                v-if="!node"
                 @click="addNode()"
             >
                 Add
@@ -157,27 +149,29 @@
 
 <script>
 import moment from "moment";
-import { ASN1_TYPES, TIME_TYPES } from '@/utils/parse';
+import { ASN1_TYPES, TIME_TYPES } from '@/utils/types';
 import { VTimePicker } from 'vuetify/labs/VTimePicker'
+import AutoComplete from '@/components/AutoComplete.vue'
 
 export default {
     components: {
-        VTimePicker
+        VTimePicker,
+        AutoComplete
     },
     props: {
         node: {
             type: Object,
             default: null
         },
-        edit: {
-            type: Boolean,
-            default: false
+        parent: {
+            type: Number, 
+            default: 0
         }
     },
     emits: ['close'],
     data() {
         return {
-            type: this.node ? this.node.tag[0] : null,
+            tag: this.node ? this.node.tag[0] : null,
             label: this.node ? this.node.label : null,
             length: this.node ? this.node.length[0] : null,
             content: this.node ? this.node.content[1] : null,
@@ -189,14 +183,45 @@ export default {
         };
     },
     methods: {
+        translate(value) {
+            // Translate invalid values into a hex string representation with leading "0x"
+            let bytes;
+
+            if (typeof value === 'string') {
+                // Encode string to UTF-8 bytes
+                bytes = new TextEncoder().encode(value);
+            } else if (typeof value === 'number') {
+                // Use 4 bytes (32-bit unsigned integer)
+                const buffer = new ArrayBuffer(4);
+                const view = new DataView(buffer);
+                view.setUint32(0, value, false); // false = big-endian
+                bytes = new Uint8Array(buffer);
+            } else if (typeof value === 'object' && value !== null) {
+                // Convert object to JSON string then encode
+                const jsonStr = JSON.stringify(value);
+                bytes = new TextEncoder().encode(jsonStr);
+            } else {
+                throw new TypeError("Unsupported type for hex conversion");
+            }
+
+            const hex = Array.from(bytes)
+                .map(b => b.toString(16).padStart(2, '0'))
+                .join('');
+
+            return '0x' + hex;
+        },
         confirmTime() {
+            // Combine date and time into a single moment object
             this.date.setHours(...this.time.split(':'));
             const moment_obj = moment(this.date);
-            const type = ASN1_TYPES[this.type].name;
+
+            // Format the time based on the ASN.1 type
+            const type = ASN1_TYPES[this.tag].name;
 
             if (type == "TIME-OF-DAY") {
                 this.content = moment_obj.format('HH:mm:ss');
             } else if (type == "TIME") {
+                // TODO? TIME can be any of the formats 
                 console.log("TIME")
             } else if (type == "DATE") {
                 this.content = moment_obj.format('YYYY-MM-DD');
@@ -211,90 +236,88 @@ export default {
             this.pick = false;
         },
         verifyContent() {
-            // If the type is set to BIT STRING, check if the content is an IP Address
-            // and convert it to a BIT STRING.
-            if (this.type == 3 && this.content) {
-                // Check if content is IPv4 address
-                if (/^(\d{1,3}\.){3}\d{1,3}$/.test(this.content)) {
-                    this.content = ASN1_TYPES[this.type].transform["ipv4"](this.content);
-                // Check if content is IPv6 address
-                } else if (/^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/.test(this.content)) {
-                    this.content = ASN1_TYPES[this.type].transform["ipv6"](this.content);
-                } else {
-                    alert("Invalid IP Address");
-                    return false;
-                }
-            }
+            // Check if tag and content are set
+            if (!this.tag || !this.content) return false;
 
-            // Check if the content is valid for the given type.
-            if (this.type && this.content) {
-                if (!ASN1_TYPES[this.type].rules(this.content)) {
-                    if (!confirm("The content is not valid for the selected type. Do you still want to continue?")) {
-                        return false;
-                    } else {
-                        this.content = translate(this.content)
+            // Check if the content is valid for the given type
+            if (ASN1_TYPES[this.tag].rules(this.content)) return true;             
+                    
+            // If not, check if there is a transformation defined for the given type
+            // and try to apply it to the content
+            if (ASN1_TYPES[this.tag].transform) {
+                for (const transform of ASN1_TYPES[this.tag].transform) {
+                    if (transform.regex.test(this.content)) {
+                        this.content = transform.converter(this.content);
+                        return true;
                     }
                 }
             }
-            return true
+
+            // Users are allowed to enter invalid values if they want
+            // So we ask for confirmation before proceeding
+            if (!confirm("The content is not valid for the selected type. Do you still want to continue?")) {
+                return false;
+            } else {
+                // The backend expects invalid values to be translated to a hex string
+                this.content = translate(this.content)
+                return true;
+            }
         },
         addNode() {
-            if (!this.verifyContent()) {
-                return;
-            }
+            // Check if the content is valid before adding the node
+            if (!this.verifyContent()) return
 
             this.$store.commit('nodeAdded', {
                 tab: this.$store.state.currentTab,
-                parent: this.node.id,
-                type: type,
-                label: label,
-                content: content
+                parent: this.parent,
+                tag: this.tag,
+                label: this.label,
+                content: this.content
             });
         },
         changeNode() {
-            if (!this.verifyContent()) {
-                return;
-            }
+            // Check if the content is valid before changing the node
+            if (!this.verifyContent()) return
 
-            if (this.node.tag[0] != this.type) {
-                this.$store.commit("nodeChanged", {
+            // Individually update all made changes
+            if (this.node.tag[0] != this.tag) {
+                this.$store.commit("nodeUpdated", {
                     tab: this.$store.state.currentTab,
                     id: this.node.id,
-                    value: this.type
+                    value: this.tag,
+                    field: "tag"
                 })
             }
 
             if (this.node.label != this.label) {
-                this.$store.commit("nodeChanged", {
+                this.$store.commit("nodeUpdated", {
                     tab: this.$store.state.currentTab,
                     id: this.node.id,
-                    value: this.label
+                    value: this.label,
+                    field: "label"
                 })
             }
 
             if (this.node.length[0] != this.length) {
-                this.$store.commit("nodeChanged", {
+                this.$store.commit("nodeUpdated", {
                     tab: this.$store.state.currentTab,
                     id: this.node.id,
-                    value: this.length
+                    value: this.length,
+                    field: "length"
                 })
             }
 
             if (this.node.content[1] != this.content) {
-                this.$store.commit("nodeChanged", {
+                this.$store.commit("nodeUpdated", {
                     tab: this.$store.state.currentTab,
                     id: this.node.id,
-                    value: this.content
+                    value: this.content,
+                    field: "content"
                 })
             }
+
+            this.$emit('close');
         }
     }
 };
 </script>
-
-<style scoped>
-
-.question-mark {
-  cursor: pointer;
-}
-</style>

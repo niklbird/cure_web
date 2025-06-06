@@ -4,8 +4,9 @@
             <div class="container">
                 <div class="logo">WEB CURE</div>
                 <div class="nav-links">
+                    <!--Router-Link provides a link to the routes defined in plugins/router.js-->
                     <router-link 
-                        v-for="link in links" 
+                        v-for="link in routes" 
                         :key="link.path" 
                         :to="link.path" 
                         class="nav-link" 
@@ -13,31 +14,34 @@
                     >
                         {{ link.name }}
                     </router-link>
+                    <!--Vuetify has predefined color themes, like dark and light, which can be switched by pressing this button.-->
                     <v-btn
                         elevation="0"
-                        class="bg-primary-darken-1"
+                        density="comfortable"
+                        :icon="mode === 'light' ? 'mdi-weather-sunny' : 'mdi-moon-waning-crescent'"
                         @click="mode = mode === 'light' ? 'dark' : 'light'"
-                    >
-                        <v-icon>{{ mode === 'light' ? 'mdi-moon-waning-crescent' : 'mdi-weather-sunny' }}</v-icon>
-                    </v-btn>
+                    />
                 </div>
             </div>
         </nav>
+        <!--Router-View is a placeholder for the view that will be rendered based on the current route.-->
         <router-view/>
     </v-app>
 </template>
 
 <script>
+import { routes } from '@/plugins/router';
+
 export default {
     data() {
         return {
-            mode: "light",
-            links: [
-                { name: "ASN.1 PARSER", path: "/" },
-                { name: "RPKI NOTIFICATION", path: "/rpki-notify" },
-                { name: "ABOUT", path: "/about" },
-            ],
+            mode: "light"
         };
+    },
+    computed: {
+        routes() {
+            return routes
+        }
     },
 };
 </script>
@@ -71,7 +75,6 @@ export default {
 .logo {
     font-size: 1.5rem;
     font-weight: bold;
-    color: #777676;
 }
 
 /* Navigation links */
