@@ -1,13 +1,13 @@
 <template>
   <div>
     <v-card
-      width="50vw"
+      width="80vw"
       position="relative"
-      style="font-size: 1.2rem; margin: 20px auto;"
+      style="margin: 20px auto;"
     >
-      <v-card-title>About web-cure</v-card-title>
+      <v-card-title><h1>about web-cure</h1></v-card-title>
       <v-card-text>
-        <p style="text-align: justify">
+        <p style="text-align: justify; font-size: 1.5rem">
           Web-Cure is a web tool suite for parsing, editing and viewing arbitrary ASN.1 encoded files.
           It allows users to parse DER/base64 encoded objects, edit objects content and structure, 
           and nest the final objects into a functional RPKI repository for testing. 
@@ -17,7 +17,7 @@
           and to manually create test-cases for RP implementations to identify issues and vulnerabilities.
         </p>
         <br>
-        <p>
+        <p style="font-size: 1.5rem">
           Web-Cure is developed and maintained by the Cyberbruecke research group at <a href="">Goethe University Frankfurt (ATHENE).</a>
           <br>Code is available on <a href="https://github.com/Cyberbruecke/cure_web">Github</a> under the MIT license.
         </p>        

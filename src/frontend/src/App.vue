@@ -5,15 +5,16 @@
                 <div class="logo">WEB CURE</div>
                 <div class="nav-links">
                     <!--Router-Link provides a link to the routes defined in plugins/router.js-->
-                    <router-link 
+                    <v-btn 
                         v-for="link in routes" 
                         :key="link.path" 
-                        :to="link.path" 
-                        class="nav-link" 
-                        exact-active-class="active-link"
+                        elevation="0"
+                        @click="path = link.path"
+                        class="nav-link"
+                        :class="{ 'active-link': path === link.path }" 
                     >
                         {{ link.name }}
-                    </router-link>
+                    </v-btn>
                     <!--Vuetify has predefined color themes, like dark and light, which can be switched by pressing this button.-->
                     <v-btn
                         elevation="0"
@@ -25,23 +26,34 @@
             </div>
         </nav>
         <!--Router-View is a placeholder for the view that will be rendered based on the current route.-->
-        <router-view/>
+        <NotifyView v-if="path == 'notify'"/>
+        <EditorView v-if="path == 'editor'"/>
+        <AboutView v-if="path == 'about'"/>
     </v-app>
 </template>
 
 <script>
-import { routes } from '@/plugins/router';
+import EditorView from "./views/EditorView.vue";
+import NotifyView from "./views/NotifyView.vue";
+import AboutView from "./views/AboutView.vue";
+
 
 export default {
     data() {
         return {
-            mode: "light"
+            mode: "light",
+            path: "editor",
+            routes: [
+                { name: "EDITOR", path: "editor" },
+                { name: "NOTIFY", path: "notify" },
+                { name: "ABOUT", path: "about" }
+            ]
         };
     },
-    computed: {
-        routes() {
-            return routes
-        }
+    components: {
+        EditorView,
+        NotifyView,
+        AboutView
     },
 };
 </script>
