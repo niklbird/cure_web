@@ -218,7 +218,7 @@ impl State{
         }
         else{
             let conf = repository_util::RepoConfig::default();
-            repo = new_repo(&conf, &ObjectType::UNKNOWN);
+            repo = new_repo(&conf, &ObjectType::UNKNOWN, true);
 
             parent_key = repo.certificate.child_key.clone();
         }
