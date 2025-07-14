@@ -86,7 +86,7 @@
                                                 {{ vrp.asn }}
                                             </td> 
                                             <td>
-                                                {{ vrp.ip.prefix }}
+                                                {{ vrp.ip.ip_s }}
                                             </td>
                                             <td>
                                                 {{ vrp.ip.max_len }}
@@ -386,10 +386,32 @@ export default {
         }
     },
     methods: {
+        uint8ToBase64(uint8Array) {
+            const base64Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+            let result = '';
+            let i;
+
+            for (i = 0; i < uint8Array.length; i += 3) {
+                const byte1 = uint8Array[i];
+                const byte2 = i + 1 < uint8Array.length ? uint8Array[i + 1] : 0;
+                const byte3 = i + 2 < uint8Array.length ? uint8Array[i + 2] : 0;
+
+                const triplet = (byte1 << 16) | (byte2 << 8) | byte3;
+
+                result += base64Chars[(triplet >> 18) & 0x3F];
+                result += base64Chars[(triplet >> 12) & 0x3F];
+                result += i + 1 < uint8Array.length ? base64Chars[(triplet >> 6) & 0x3F] : '=';
+                result += i + 2 < uint8Array.length ? base64Chars[triplet & 0x3F] : '=';
+            }
+
+            return result;
+        },
         async runTestCase() {
             // The file is embedded in a repository and setup to be run on the test backend
             let z = this.state.repositorify();
-            let serialized = z.toBase64();
+            const serialized = this.uint8ToBase64(z)
+            // const serialized = btoa(String.fromCharCode(z))
+            // let serialized = z.toBase64();
  
             let port = 21999;
             let url = `http://localhost:${port}/execute`
