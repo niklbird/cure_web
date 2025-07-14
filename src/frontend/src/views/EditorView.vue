@@ -62,7 +62,44 @@
                             :value="idx"
                             class="pa-4"
                         >
-                            <pre class="text-pre-wrap">{{ report.report }}</pre>
+                            <div
+                                v-for="(rp, i) in report"
+                                :key="i"
+                            >
+                                <span>{{ rp.name }}</span>
+                                <table>
+                                    <tr>
+                                        <th>ASN</th>
+                                        <th>IP Prefix</th>
+                                        <th>Max Length</th>
+                                        <th>Trust Anchor</th>
+                                    </tr>
+                                    <tr
+                                        v-for="(vrp, i3) in rp.vrps"
+                                        :key="i3"    
+                                    >
+                                        <td>
+                                            {{ vrp.content.asn }}
+                                        </td> 
+                                        <td>
+                                            {{ vrp.content.ip.prefix }}
+                                        </td>
+                                        <td>
+                                            {{ vrp.content.ip.max_len }}
+                                        </td>
+                                        <td>
+                                            ta
+                                        </td>
+                                    </tr>
+                                </table>
+                                Errors:
+                                <pre 
+                                    class="text-pre-wrap"
+                                    v-for="(error, i2) in rp.errors"
+                                >
+                                    {{ error }}
+                                </pre>
+                            </div>
                         </v-window-item>
                     </v-window>
                 </v-col>
