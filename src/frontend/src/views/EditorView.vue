@@ -26,74 +26,58 @@
     <v-overlay
         v-model="showReports"
     >
-    <v-card
-        width="50vw"
-        height="50vh"
+        <v-card
+        width="70vw"
+        height="70vh"
+        class="d-flex flex-column"
     >
-        <v-card-title
-            class="text-center bg-primary"
-        >
+        <v-card-title class="text-center bg-primary">
             REPORTS
         </v-card-title>
-        <v-card-text>
-            <v-row
-                width="100%"
-            >
-                <v-col
-                    cols="2"
-                >
+
+        <v-card-text class="flex-grow-1 overflow-y-auto">
+            <v-row no-gutters class="h-100">
+                <v-col cols="2">
                     <v-tabs
                         v-model="reportTab"
-                        bg-color="primary"
                         direction="vertical"
+                        class="h-100"
                     >
-                        <v-tab 
-                            v-for="(report, idx) of reports"
-                            :key="idx"
+                        <v-tab
+                            v-for="(report, idx) in reports"
+                            :key="`tab-${idx}`"
                             :value="idx"
+                            class="text-capitalize"
                         >
-                            <!-- TODO this string is very ugly rn -->
-                            {{ report['name'] }}
+                            {{ report.name.replace(/_/g, ' ') }}
                         </v-tab>
                     </v-tabs>
                 </v-col>
-                <v-col
-                    cols="10"
-                >
-                    <v-tabs-window v-model="reportTab">
-                        <v-tabs-window-item 
-                            v-for="(report, idx) of reports"
-                            :key="idx"
+
+                <v-col cols="10">
+                    <v-window v-model="reportTab" class="h-100">
+                        <v-window-item
+                            v-for="(report, idx) in reports"
+                            :key="`window-${idx}`"
                             :value="idx"
+                            class="pa-4"
                         >
-                            <p>
-                                {{ report['report'] }}
-                            </p>
-                        </v-tabs-window-item>
-                    </v-tabs-window>
+                            <pre class="text-pre-wrap">{{ report.report }}</pre>
+                        </v-window-item>
+                    </v-window>
                 </v-col>
             </v-row>
         </v-card-text>
-        <v-card-actions
-            class="d-flex justify-end"
-            style="position: absolute; bottom: 0; right: 0; left: 0;"        
-        >
-            <!-- 
-                TODO: Each report also includes the test case that caused it, should be able to load test cases
-                Another nice thing would be to have the option to write a comment on a test case, so you can 
-                remember what it tested.
-                When clicking the run test case button a menu should open, where you can also change the backend
-                url.
-            -->
-            <v-btn
-                @click="showReports = false"
-            >
-                Load test case
+
+        <v-divider></v-divider>
+
+        <v-card-actions class="pa-4">
+            <v-spacer></v-spacer>
+            <v-btn color="primary" variant="tonal">
+                Load Test Case
             </v-btn>
-            <v-btn
-                @click="showReports = false"
-            >
-               Close 
+            <v-btn @click="showReports = false" color="grey" variant="tonal">
+                Close
             </v-btn>
         </v-card-actions>
     </v-card>
@@ -376,6 +360,7 @@ export default {
                     }
                 });
                 alert("Test report done!")
+                console.log(response.data)
                 // Add new report to list of  reports
                 this.reports.push({
                     name: this.$store.getters.name,
