@@ -63,11 +63,12 @@
                             class="pa-4"
                         >
                             <div
-                                v-for="(rp, i) in report"
+                                v-for="(rp, i) in report.report"
                                 :key="i"
                             >
-                                <span>{{ rp.name }}</span>
-                                <table>
+                                <h3>{{ rp.name }}</h3><br>
+                                <span>{{ rp.crashed ? "Crash: True" : "Crash: False" }}</span>
+                                <table class="table-bordered-centered">
                                     <thead>
                                     <tr>
                                             <th>ASN</th>
@@ -78,17 +79,17 @@
                                     </thead>
                                     <tbody>
                                         <tr
-                                            v-for="(vrp, i3) in rp.vrps"
+                                            v-for="(vrp, i3) in rp.vrps.content"
                                             :key="i3"    
                                         >
                                             <td>
-                                                {{ vrp.content.asn }}
+                                                {{ vrp.asn }}
                                             </td> 
                                             <td>
-                                                {{ vrp.content.ip.prefix }}
+                                                {{ vrp.ip.prefix }}
                                             </td>
                                             <td>
-                                                {{ vrp.content.ip.max_len }}
+                                                {{ vrp.ip.max_len }}
                                             </td>
                                             <td>
                                                 ta
@@ -99,10 +100,8 @@
                                 Errors:
                                 <pre 
                                     class="text-pre-wrap"
-                                    v-for="(error, i2) in rp.errors"
-                                    :key="i2"
                                 >
-                                    {{ error }}
+                                    {{ rp.errors }}
                                 </pre>
                             </div>
                         </v-window-item>
@@ -402,13 +401,15 @@ export default {
                     }
                 });
                 alert("Test report done!")
-                console.log(response.data)
+                let report = response.data.map(JSON.parse)
+                console.log(report)
                 // Add new report to list of  reports
                 this.reports.push({
                     name: this.$store.getters.name,
                     state: this.state.encode_store(),
-                    report: response.data
+                    report: report
                 })
+            
             } catch (error) {
                 console.error("Error during test case execution:", error);
                 console.log(serialized);
@@ -551,6 +552,19 @@ export default {
 
 .content {
     color: #ff79c6;
+}
+
+.table-bordered-centered {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.table-bordered-centered th,
+.table-bordered-centered td {
+  border: 1px solid #000;
+  text-align: center;
+  vertical-align: middle;
+  padding: 8px;
 }
 
 .bytes {
