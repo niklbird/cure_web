@@ -67,8 +67,8 @@ export const ASN1_TYPES = {
             A BIT STRING containing all zero bits can be expressed using empty curly brackets. 
         `,
         completions: [],
-        transform: {
-            "ipv4": {
+        transform: [
+            {
                 "regex": /^(\d{1,3}\.){3}\d{1,3}$/,
                 "converter": (value) => {
                     // Convert IP string to binary
@@ -78,7 +78,7 @@ export const ASN1_TYPES = {
                     return binaryParts.join("");
                 },
             },
-            "ipv6": {
+            {
                 "regex": /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/,
                 "converter": (value) => {
                     // Convert IPv6 string to binary
@@ -88,7 +88,7 @@ export const ASN1_TYPES = {
                     return binaryParts.join("");
                 }
             }
-        }
+        ]
     },
     4: {
         name: "OCTET STRING",
