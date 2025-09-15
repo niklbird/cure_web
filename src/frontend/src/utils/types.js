@@ -53,6 +53,9 @@ export const ASN1_TYPES = {
             if (/^0x[0-9A-F]+$/i.test(value)) return true;
             // Check if it's a named bit list ({...})
             if (/^\{([a-zA-Z0-9_]+(,\s*[a-zA-Z0-9_]+)*)?\}$/.test(value)) return true;
+            if (/^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/.test(value)) return true; // IPv4
+            if (/^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}(\/\d{1,2})?$/.test(value)) return true; // IPv6
+
             return false;
         },
         example: "100101B",

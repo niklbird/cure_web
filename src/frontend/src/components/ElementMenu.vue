@@ -243,17 +243,6 @@ export default {
 
             // Check if the content is valid for the given type
             if (ASN1_TYPES[this.tag].rules(this.content)) return true;             
-                    
-            // If not, check if there is a transformation defined for the given type
-            // and try to apply it to the content
-            if (ASN1_TYPES[this.tag].transform) {
-                for (const transform of ASN1_TYPES[this.tag].transform) {
-                    if (transform.regex.test(this.content)) {
-                        this.content = transform.converter(this.content);
-                        return true;
-                    }
-                }
-            }
 
             // Users are allowed to enter invalid values if they want
             // So we ask for confirmation before proceeding
