@@ -67,7 +67,7 @@
                                 :key="i"
                             >
                                 <h3>{{ rp.name }}</h3><br>
-                                <span>{{ rp.crashed ? "Crash: True" : "Crash: False" }}</span>
+                                <span :class="{crashed: rp.crashed}">{{ rp.crashed ? "Crash: True" : "Crash: False" }}</span>
                                 <table class="table-bordered-centered">
                                     <thead>
                                     <tr>
@@ -97,7 +97,7 @@
                                         </tr>
                                     </tbody>
                                 </table>
-                                Errors:
+                                <span :class="{crashed: rp.crashed}">Errors:</span> 
                                 <pre 
                                     class="text-pre-wrap"
                                 >
@@ -429,7 +429,9 @@ export default {
                         'Content-Type': 'text/plain'
                     }
                 });
-                alert("Test report done!")
+                alert("Test case executed successfully.")
+                this.showReports = true;
+
                 let report = response.data.map(JSON.parse)
                 console.log(report)
                 // Add new report to list of  reports
@@ -597,6 +599,11 @@ export default {
   text-align: center;
   vertical-align: middle;
   padding: 8px;
+}
+
+.crashed {
+    color: red;
+    font-weight: bold;
 }
 
 .bytes {
