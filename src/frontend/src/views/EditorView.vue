@@ -57,7 +57,7 @@
                 <v-col cols="10">
                     <v-window v-model="reportTab" class="h-100">
                         <v-window-item
-                            v-for="(report, idx) in reports"
+                            v-for="(report, idx) in reports.sort((a, b) => Number(b.crashed) - Number(a.crashed))"
                             :key="`window-${idx}`"
                             :value="idx"
                             class="pa-4"
@@ -68,7 +68,7 @@
                             >
                                 <h3>{{ rp.name }}</h3><br>
                                 <span :class="{crashed: rp.crashed}">{{ rp.crashed ? "Crash: True" : "Crash: False" }}</span>
-                                <table class="table-bordered-centered">
+                                <table v-if="!rp.crashed" class="table-bordered-centered">
                                     <thead>
                                     <tr>
                                             <th>ASN</th>
@@ -100,6 +100,7 @@
                                 <span :class="{crashed: rp.crashed}">Errors:</span> 
                                 <pre 
                                     class="text-pre-wrap"
+                                    :class="{'crashed-thin': rp.crashed}"
                                 >
                                     {{ rp.errors }}
                                 </pre>
@@ -429,7 +430,7 @@ export default {
                         'Content-Type': 'text/plain'
                     }
                 });
-                alert("Test case executed successfully.")
+
                 this.showReports = true;
 
                 let report = response.data.map(JSON.parse)
@@ -604,6 +605,10 @@ export default {
 .crashed {
     color: red;
     font-weight: bold;
+}
+
+.crashed-thin {
+    color: red;
 }
 
 .bytes {
