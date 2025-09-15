@@ -1,10 +1,12 @@
 <template>
-    <v-app :theme=mode>
+    <v-app :theme="mode">
         <nav class="navbar bg-surface">
             <div class="container">
-                <div class="logo">WEB CURE</div>
+                <div class="logo">
+                    <img :src="logo" alt="Logo" height="40"/>
+                    <span class="logo-text">{{ path == "editor" ? "DERP" : "CURE" }}</span>
+                </div>
                 <div class="nav-links">
-                    <!--Router-Link provides a link to the routes defined in plugins/router.js-->
                     <v-btn 
                         v-for="link in routes" 
                         :key="link.path" 
@@ -15,7 +17,6 @@
                     >
                         {{ link.name }}
                     </v-btn>
-                    <!--Vuetify has predefined color themes, like dark and light, which can be switched by pressing this button.-->
                     <v-btn
                         elevation="0"
                         density="comfortable"
@@ -25,7 +26,6 @@
                 </div>
             </div>
         </nav>
-        <!--Router-View is a placeholder for the view that will be rendered based on the current route.-->
         <NotifyView v-if="path == 'notify'"/>
         <FuzzingView v-if="path == 'fuzzing'"/>
         <EditorView v-if="path == 'editor'"/>
@@ -38,10 +38,12 @@ import EditorView from "./views/EditorView.vue";
 import NotifyView from "./views/NotifyView.vue";
 import AboutView from "./views/AboutView.vue";
 import FuzzingView from "./views/FuzzingView.vue";
+import logo from "./assets/logo.png"
 
 export default {
     data() {
         return {
+            logo,
             mode: "light",
             path: "editor",
             routes: [
@@ -86,11 +88,22 @@ export default {
     padding: 0 20px;
 }
 
-/* Logo styling */
+/* MODIFIED: Logo container styling for better alignment */
 .logo {
-    font-size: 1.5rem;
-    font-weight: bold;
+    display: flex;
+    align-items: center; /* Vertically centers the icon and text */
+    gap: 12px; /* Adds a nice space between the icon and text */
 }
+
+/* NEW: Specific styling for the logo text */
+.logo-text {
+    font-family: 'Montserrat', sans-serif; /* A clean, modern heading font */
+    font-size: 32px; /* Adjusted to visually match the 40px icon height */
+    font-weight: 700; /* A strong, bold weight */
+    color: rgb(var(--v-theme-primary)); /* Uses Vuetify's primary theme color */
+    line-height: 1; /* Ensures text height is tight */
+}
+
 
 /* Navigation links */
 .nav-links {
