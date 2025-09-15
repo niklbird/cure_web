@@ -65,7 +65,9 @@
       <div class="fuzzing-layout">
         <div class="fuzzing-column">
           <h3>📜 Logs</h3>
-          <pre ref="logContainer" class="log-box">{{ logContent }}</pre>
+          <pre ref="logContainer" class="log-box">
+            {{ logContent }}
+          </pre>
         </div>
         <div class="fuzzing-column">
           <h3>🚨 Errors Found</h3>
@@ -397,6 +399,7 @@ small {
 
 .log-box {
   background-color: #1e1e1e;
+  text-align: left;
   color: #d4d4d4;
   padding: 1rem;
   border-radius: 8px;
