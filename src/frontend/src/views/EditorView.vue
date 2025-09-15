@@ -57,7 +57,7 @@
                 <v-col cols="10">
                     <v-window v-model="reportTab" class="h-100">
                         <v-window-item
-                            v-for="(report, idx) in reports.sort((a, b) => Number(b.crashed) - Number(a.crashed))"
+                            v-for="(report, idx) in reports.sort((a, b) => Number(a.crashed) - Number(b.crashed))"
                             :key="`window-${idx}`"
                             :value="idx"
                             class="pa-4"
@@ -98,6 +98,7 @@
                                     </tbody>
                                 </table>
                                 <span :class="{crashed: rp.crashed}">Errors:</span> 
+                                <br>
                                 <pre 
                                     class="text-pre-wrap"
                                     :class="{'crashed-thin': rp.crashed}"

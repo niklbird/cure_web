@@ -27,6 +27,7 @@
         </nav>
         <!--Router-View is a placeholder for the view that will be rendered based on the current route.-->
         <NotifyView v-if="path == 'notify'"/>
+        <FuzzingView v-if="path == 'fuzzing'"/>
         <EditorView v-if="path == 'editor'"/>
         <AboutView v-if="path == 'about'"/>
     </v-app>
@@ -36,7 +37,7 @@
 import EditorView from "./views/EditorView.vue";
 import NotifyView from "./views/NotifyView.vue";
 import AboutView from "./views/AboutView.vue";
-
+import FuzzingView from "./views/FuzzingView.vue";
 
 export default {
     data() {
@@ -45,6 +46,7 @@ export default {
             path: "editor",
             routes: [
                 { name: "EDITOR", path: "editor" },
+                { name: "FUZZING", path: "fuzzing" },
                 { name: "NOTIFY", path: "notify" },
                 { name: "ABOUT", path: "about" }
             ]
@@ -53,7 +55,8 @@ export default {
     components: {
         EditorView,
         NotifyView,
-        AboutView
+        AboutView,
+        FuzzingView
     },
 };
 </script>

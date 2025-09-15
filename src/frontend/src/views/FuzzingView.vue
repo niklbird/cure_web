@@ -1,6 +1,5 @@
 <template>
   <div class="fuzzer-container">
-
     <div v-if="!isFuzzing" class="form-wrapper">
       <h1>RPKI Fuzzer Configuration</h1>
       <form @submit.prevent="startFuzzing">
@@ -158,7 +157,7 @@ const startFuzzing = async () => {
       throw new Error(`Server responded with status: ${response.status}`);
     }
 
-    await fetch('http://127.0.0.1:21234/fuzz', { method: 'GET' });
+    await fetch('http://127.0.0.1:21999/fuzz', { method: 'GET' });
 
     logContent.value += `[${new Date().toLocaleTimeString()}] Fuzzing successfully initiated. Polling for data...\n`;
 
@@ -180,7 +179,7 @@ const pollData = () => {
 
 const fetchLogs = async () => {
   try {
-    const response = await fetch('http://127.0.0.1:21234/get_log');
+    const response = await fetch('http://127.0.0.1:21999/get_log');
     if (response.ok) {
       const newLogText = await response.text();
       if (newLogText) {
@@ -199,7 +198,7 @@ const fetchLogs = async () => {
 // NEW: Function to fetch errors
 const fetchErrors = async () => {
   try {
-    const response = await fetch('http://127.0.0.1:21234/get_errors');
+    const response = await fetch('http://127.0.0.1:21999/get_errors');
     if (response.ok) {
       const newErrors = await response.json();
       if (newErrors && newErrors.length > 0) {
@@ -216,7 +215,7 @@ const fetchErrors = async () => {
 };
 
 const stopFuzzing = async () => {
-  await fetch("http://127.0.0.1:21234/stop")
+  await fetch("http://127.0.0.1:21999/stop")
   if (pollingInterval) {
     clearInterval(pollingInterval);
     pollingInterval = null;
