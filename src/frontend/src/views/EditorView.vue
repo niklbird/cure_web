@@ -166,6 +166,13 @@
             >
                 SHOW REPORTS
             </v-btn>
+            <v-btn
+                color="primary"
+                class="ma-2"
+                @click="$store.dispatch('setAll', !$store.getters.anyExpanded)"
+            >
+                {{  $store.getters.anyExpanded ? "COLLAPSE ALL" : "EXPAND ALL" }}
+            </v-btn>    
         </v-row>
         <v-row
             id="tab-content"

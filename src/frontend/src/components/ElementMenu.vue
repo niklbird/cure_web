@@ -240,7 +240,6 @@ export default {
 
             // Check if tag and content are set
             if (this.tag === null || this.content === null) return false;
-
             // Check if the content is valid for the given type
             if (ASN1_TYPES[this.tag].rules(this.content)) return true;             
 

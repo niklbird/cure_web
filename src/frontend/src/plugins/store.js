@@ -71,6 +71,13 @@ export default createStore({
         },
         target: (state) => {
             return state.currentTab < 0 ? -1 : state.tabs[state.currentTab].dragTarget
+        },
+        anyExpanded: (state) => {
+            if (state.currentTab < 0) {
+                return false
+            }
+
+            return Object.values(state.tabs[state.currentTab].expanded).some((value) => value)
         }
     },
     mutations: {
@@ -213,6 +220,16 @@ export default createStore({
         },
     },
     actions: {
+        setAll: function (context, expanded) {
+            // Expand all nodes in the current tab
+            const setExpanded = (node) => {
+                context.commit("expandedSet", {id: node.id, expanded: expanded})
+            }
+
+            for (let node of context.state.tabs[context.state.currentTab].tree) {
+                setExpanded(node)
+            }
+        },
         undo: function (context) {
             // Undo is implemented by decreasing the mutation counter by one and then applying
             // all mutations up to the counter to the empty state
