@@ -57,17 +57,18 @@
                 <v-col cols="10">
                     <v-window v-model="reportTab" class="h-100">
                         <v-window-item
-                            v-for="(report, idx) in reports.sort((a, b) => Number(a.crashed) - Number(b.crashed))"
+                            v-for="(report, idx) in reports"
                             :key="`window-${idx}`"
                             :value="idx"
                             class="pa-4"
                         >
                             <div
-                                v-for="(rp, i) in report.report"
+                                v-for="(rp, i) in report.report.sort((a, b) => Number(b.crashed) - Number(a.crashed))"
                                 :key="i"
                             >
                                 <h3>{{ rp.name }}</h3><br>
                                 <span :class="{crashed: rp.crashed}">{{ rp.crashed ? "Crash: True" : "Crash: False" }}</span>
+                                <br>
                                 <table v-if="!rp.crashed" class="table-bordered-centered">
                                     <thead>
                                     <tr>
