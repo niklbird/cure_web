@@ -48,9 +48,9 @@ export const ASN1_TYPES = {
         name: "BIT STRING",
         rules: (value) => {
             // Check if it's a binary string ('...'B)
-            if (/^'[01]+'B$/.test(value)) return true;
+            if (/^[01]+$/.test(value)) return true;
             // Check if it's a hexadecimal string ('...'H)
-            if (/^'[0-9A-F]+'H$/i.test(value)) return true;
+            if (/^0x[0-9A-F]+$/i.test(value)) return true;
             // Check if it's a named bit list ({...})
             if (/^\{([a-zA-Z0-9_]+(,\s*[a-zA-Z0-9_]+)*)?\}$/.test(value)) return true;
             return false;
