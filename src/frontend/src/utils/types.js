@@ -69,9 +69,10 @@ export const ASN1_TYPES = {
         completions: [],
         transform: [
             {
-                "regex": /^(\d{1,3}\.){3}\d{1,3}$/,
+                "regex": /^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/,
                 "converter": (value) => {
                     // Convert IP string to binary
+                    value = value.split("/")[0];
                     const parts = value.split(".");
                     if (parts.length !== 4) return null;
                     const binaryParts = parts.map(part => parseInt(part).toString(2).padStart(8, '0'));
@@ -79,9 +80,10 @@ export const ASN1_TYPES = {
                 },
             },
             {
-                "regex": /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/,
+                "regex": /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}(\/\d{1,2})?$/,
                 "converter": (value) => {
                     // Convert IPv6 string to binary
+                    value = value.split("/")[0];
                     const parts = value.split(":");
                     if (parts.length !== 8) return null;
                     const binaryParts = parts.map(part => parseInt(part, 16).toString(2).padStart(16, '0'));

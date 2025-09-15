@@ -236,8 +236,10 @@ export default {
             this.pick = false;
         },
         verifyContent() {
+            if (this.content === "") return true;
+
             // Check if tag and content are set
-            if (!this.tag || !this.content) return false;
+            if (this.tag === null || this.content === null) return false;
 
             // Check if the content is valid for the given type
             if (ASN1_TYPES[this.tag].rules(this.content)) return true;             
@@ -259,7 +261,7 @@ export default {
                 return false;
             } else {
                 // The backend expects invalid values to be translated to a hex string
-                this.content = translate(this.content)
+                this.content = this.translate(this.content)
                 return true;
             }
         },
