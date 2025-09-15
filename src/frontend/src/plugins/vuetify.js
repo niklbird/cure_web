@@ -11,6 +11,18 @@ import { createVuetify } from 'vuetify'
 
 export default createVuetify({
   theme: {
-    defaultTheme: 'dark',
-  }}
-)
+    themes: {
+      light: {
+        colors: {
+          // keep defaults + add yours
+          content: '#1D3557',
+        },
+      },
+      dark: {
+        colors: {
+          content: '#BDE1EF',
+        },
+      },
+    },
+  },
+})

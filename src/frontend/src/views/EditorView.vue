@@ -575,7 +575,7 @@ export default {
 }
 
 .content {
-    color: #1D3557;
+    color: rgb(var(--v-theme-content));;
     font-weight: bold;
 }
 
