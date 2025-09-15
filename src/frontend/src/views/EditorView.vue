@@ -561,19 +561,22 @@ export default {
 
 <style>
 .tag {
-    color: #61dafb;
+    color: #7EBDC2;
 }
 
 .label {
-    color: #0ec752;
+    color: #E63946;
+    font-weight: bold;
+
 }
 
 .length {
-    color: #ffa500;
+    color: #60A561;
 }
 
 .content {
-    color: #ff79c6;
+    color: #1D3557;
+    font-weight: bold;
 }
 
 .table-bordered-centered {

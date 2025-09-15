@@ -220,7 +220,7 @@ export default {
 
 .node-tag {
     font-weight: bold;
-    color: #61dafb;
+    color: #7EBDC2;
     padding: 5px;
 }
 
