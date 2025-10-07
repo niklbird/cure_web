@@ -96,7 +96,7 @@
                     <MenuComponent :items="formats.map(format => ({ title: format.toUpperCase(), action: () => download(format) }))" />
                 </v-btn>
             </v-col>
-            <v-col cols="12" sm="auto" v-if="tree.length > 0">
+            <v-col cols="12" sm="auto" v-if="tree.length > 0 && url.length > 0">
                 <v-btn color="primary" @click="runTestCase" :block="isMobile">
                     RUN TEST CASE WITH CURE
                 </v-btn>
@@ -159,9 +159,15 @@ import MenuComponent from '@/components/MenuComponent.vue'
 import axios from 'axios';
 import { useDisplay } from 'vuetify'
 
+const port = 21999;
+const local_url = `http://localhost:${port}/`
+const production_url = `https://web-cure.site:${port}/`
+
+
 export default {
     setup() {
         const { mobile } = useDisplay()
+
         return { isMobile: mobile }
     },
     data() {
@@ -177,6 +183,7 @@ export default {
             showElementMenu: false,
             // Information on the bytes window for scrolling
             bytesTop: 0,
+            url: "",
             // Flag to show if upload window should be shown
             load: false,
             // While exporting, loading is set to show the loading overlay
@@ -312,14 +319,9 @@ export default {
             // The file is embedded in a repository and setup to be run on the test backend
             let z = this.state.repositorify();
             const serialized = this.uint8ToBase64(z)
-            // const serialized = btoa(String.fromCharCode(z))
-            // let serialized = z.toBase64();
- 
-            let port = 21999;
-            let url = `http://localhost:${port}/execute`
 
             try {
-                const response = await axios.post(url, serialized, {
+                const response = await axios.post(this.url + "execute", serialized, {
                     headers: {
                         'Content-Type': 'text/plain'
                     }
@@ -328,7 +330,6 @@ export default {
                 this.showReports = true;
 
                 let report = response.data.map(JSON.parse)
-                console.log(report)
                 // Add new report to list of  reports
                 this.reports.push({
                     name: this.$store.getters.name,
@@ -445,6 +446,28 @@ export default {
     },
     async beforeCreate() {
         await init()
+
+        let url = ""
+        
+        try {
+            await axios.post(local_url + "execute", serialized, {
+                headers: {
+                    'Content-Type': 'text/plain'
+                }
+            });
+            url = local_url
+        } catch (error) {
+            try {
+                await axios.post(production_url + "execute", serialized, {
+                    headers: {
+                        'Content-Type': 'text/plain'
+                    }
+                });
+                url = production_url
+            } catch (error) {
+                console.log("Could not reach backend at either local or production URL. Please ensure that the backend is running and accessible.")
+            }
+        }
     },
     mounted() {
         window.addEventListener('keydown', this.handleKeydown)
