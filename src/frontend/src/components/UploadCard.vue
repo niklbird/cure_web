@@ -61,153 +61,144 @@
 
 <script>
 export default {
-    // Component consists of a drop zone for file upload, drag & drop functionality, and paste support for base64 content.
     data() {
         return {
             data: null,
             file: null,
-            // Flag to indicate if a file is being dragged over the drop zone
             dragOver: false,
-            // Flag to indicate if dialog window should be shown
             dialog: false
         };
     },
     emits: ["upload"],
     methods: {
-        open: function (newTab) {
-            this.dialog = false
+        open(newTab) {
+            this.dialog = false;
+            const type = this.file.name.endsWith(".json") ? "json" : "hex";
+
             if (newTab) {
-                // File should be opened in a new tab
-                this.$store.commit("tabAdded", this.file.name || "Unnamed")
-                this.$store.commit("stateSet", {
-                    tab: this.$store.state.currentTab,
-                    data: this.data,
-                    type: this.file.name.endsWith(".json") ? "json" : "hex"
-                })
+                this.$store.commit("tabAdded", this.file.name || "Unnamed");
             } else {
-                // File should be opened in the current tab
-                // Rename tab to the current file name ?
-                // this.$store.commit("tabRenamed", this.file.name || "Unnamed")
-                this.$store.commit("stateSet", {
-                    tab: this.$store.state.currentTab,
-                    data: this.data,
-                    type: this.file.name.endsWith(".json") ? "json" : "hex"
-                })
+                // If opening in the current tab, you might want to rename it.
+                // this.$store.commit("tabRenamed", { tabId: this.$store.state.currentTab, newName: this.file.name || "Unnamed" });
             }
-            this.$emit("upload")
+
+            this.$store.commit("stateSet", {
+                tab: this.$store.state.currentTab,
+                data: this.data,
+                type: type
+            });
+
+            this.$emit("upload");
         },
-        uploadFile: function (multiple) {
-            const reader = new FileReader();
-            // To access `this` inside the reader's onload function, we need to store it in a variable
-            // because the context of `this` changes inside the function.
-            const that = this
 
-            // Two kinds of files are supported:
-            // - JSON project files (created when using the EXPORT JSON button)
-            // - Binary ASN files
-            if (this.file.name.endsWith(".json")) {
-                reader.onload = async function (e) {
-                    try {
-                        const enc = new TextDecoder("utf-8");
-                        that.data = enc.decode(e.target.result);
+        /**
+         * NEW: This async function processes a single file.
+         * It replaces the old uploadFile method.
+         * @param {File} file - The file to process.
+         */
+        async processFile(file) {
+            this.file = file; // Set the current file being processed
 
-                        if (multiple || !that.$store.getters.tabs.length == 0) {
-                            that.open(true)
-                        } else {
-                            that.dialog = true
-                        }
-                    } catch (err) {
-                        console.log("Error processing JSON file: " + err)
-                        alert("Error processing file. Please ensure it is project file.")
-                        that.file = null
+            try {
+                if (file.name.endsWith(".json")) {
+                    // Modern way to read a file as text
+                    this.data = await file.text();
+                } else {
+                    // Modern way to read a file as an ArrayBuffer
+                    const arrayBuffer = await file.arrayBuffer();
+                    const uint8Array = new Uint8Array(arrayBuffer);
+                    this.data = [...uint8Array]
+                        .map(byte => byte.toString(16).padStart(2, "0").toUpperCase())
+                        .join("");
+                }
+            } catch (err) {
+                console.error("Error processing file:", err);
+                alert(`Error processing ${file.name}. Please ensure the file is valid.`);
+                this.file = null; // Clear file on error
+                return; // Stop execution for this file
+            }
+        },
+
+        triggerFileInput() {
+            this.$refs.fileInput.click();
+        },
+
+        /**
+         * MODIFIED: Made async to handle multiple files sequentially.
+         */
+        async handleFileSelect(event) {
+            const files = event.target.files;
+            const multiple = files.length > 1;
+
+            for (const file of files) {
+                await this.processFile(file);
+
+                // Logic to decide whether to show the dialog or open in a new tab
+                if (multiple || this.$store.getters.tabs.length > 0) {
+                    this.open(true); // Always open in a new tab for multiple files or if other tabs exist
+                } else {
+                    this.dialog = true; // Show dialog only for the first single file
+                }
+            }
+        },
+
+        /**
+         * MODIFIED: Made async to handle multiple files sequentially.
+         */
+        async handleDrop(event) {
+            this.dragOver = false;
+            const files = event.dataTransfer.files;
+            const multiple = files.length > 1;
+
+            for (const file of files) {
+                await this.processFile(file);
+
+                if (multiple || this.$store.getters.tabs.length > 0) {
+                    this.open(true);
+                } else {
+                    this.dialog = true;
+                }
+            }
+        },
+        
+        async handlePaste(event) {
+            if (!event.clipboardData) return;
+
+            // Handle pasted files
+            if (event.clipboardData.files.length > 0) {
+                const files = event.clipboardData.files;
+                const multiple = files.length > 1;
+
+                for (let file of files) {
+                    await this.processFile(file);
+
+                    if (multiple || this.$store.getters.tabs.length > 0) {
+                        this.open(true);
+                    } else {
+                        this.dialog = true;
                     }
                 }
-            } else {
-                reader.onload = async function (e) {
-                    try {
-                        const arrayBuffer = e.target.result;
-                        const uint8Array = new Uint8Array(arrayBuffer);
-
-                        // Convert each byte to a two-character hex representation
-                        const hexString = [...uint8Array]
-                            // Convert to uppercase hex
-                            .map(byte => byte.toString(16).padStart(2, "0").toUpperCase()) 
-                            // Join into a single string
-                            .join(""); 
-                        that.data = hexString
-                        if (multiple || that.$store.getters.tabs.length == 0) {
-                            that.open(true)
-                        } else {
-                            that.dialog = true
-                        }
-                    } catch (err) {
-                        console.log("Error processing WASM module: " + err)
-                        alert("Error processing file. Please ensure it is valid ASN.1 data.")
-                        that.file = null
-                    }
-                };
-            }
-            reader.onerror = function (e) {
-                console.log("Error reading file: " + e.target.error)
-                alert("Error reading file.")
-            };
-
-            reader.readAsArrayBuffer(this.file);  // Use ArrayBuffer for raw binary
-        },
-        triggerFileInput: function () {
-            // Clicking anywhere in the drop zone will trigger the file input click
-            // and open the file dialog
-            this.$refs.fileInput.click()
-        },
-        handleFileSelect: function (event) {
-            // Handle file selection from the file input
-            for (const file of event.target.files) {
-                this.file = file
-                this.uploadFile(event.target.files.length > 1)
-            }
-        },
-        handleDrop: function(event) {
-            // Handle file drop into the drop zone
-            this.dragOver = false;
-            for (const file of event.dataTransfer.files) {
-                this.file = file
-                this.uploadFile(event.dataTransfer.files.length > 1)
-            }
-        },
-        handlePaste: function(event) {
-            if (!event.clipboardData) return
-            if (!event.clipboardData.files.length) {
-                // No files in clipboard
-                // -> Try to paste text
+            } else { // Handle pasted text
                 try {
                     const text = event.clipboardData.getData('text/plain');
-
-                    // The input is expected to be a base64 encoded string
-                    // Convert base64 string to Uint8Array
+                    // Assuming fromBase64 is a polyfill or custom prototype method
                     const uint8Array = Uint8Array.fromBase64(text);
-
-                    // Convert to uppercase hex string
-                    const hexString = [...uint8Array]
+                    this.data = [...uint8Array]
                         .map(byte => byte.toString(16).padStart(2, '0').toUpperCase())
                         .join('');
+                    
+                    // Create a placeholder file object for the `open` method
+                    this.file = { name: "Pasted Content" };
 
-                    this.data = hexString
-                    if (!this.$store.getters.tabs.length == 0) {
-                        this.open(true)   
+                    if (this.$store.getters.tabs.length > 0) {
+                        this.open(true);
                     } else {
-                        this.dialog = true
-                    }              
+                        this.dialog = true;
+                    }
                 } catch (err) {
-                    console.log("Error processing pasted data: " + err)
-                    alert("Error processing pasted data. Please ensure it is valid ASN.1 data.")
+                    console.error("Error processing pasted data:", err);
+                    alert("Error processing pasted data. Please ensure it is valid base64.");
                 }
-            } else {
-                // Files in clipboard
-                // -> Paste file
-                for (let file of event.clipboardData.files) {
-                    this.file = file
-                    this.uploadFile(event.clipboardData.files.length > 1)
-                }            
             }
         },
     },
