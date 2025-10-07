@@ -96,7 +96,7 @@
                     <MenuComponent :items="formats.map(format => ({ title: format.toUpperCase(), action: () => download(format) }))" />
                 </v-btn>
             </v-col>
-            <v-col cols="12" sm="auto" v-if="tree.length > 0 && url.length > 0">
+            <v-col cols="12" sm="auto" v-if="tree.length > 0 && reachable">
                 <v-btn color="primary" @click="runTestCase" :block="isMobile">
                     RUN TEST CASE WITH CURE
                 </v-btn>
@@ -111,10 +111,20 @@
                     {{ $store.getters.anyExpanded ? "COLLAPSE ALL" : "EXPAND ALL" }}
                 </v-btn>
             </v-col>
-            <v-spacer></v-spacer>
-            <v-col cols="12" sm="auto">
-                <v-checkbox v-model="simplify" label="SIMPLIFIED VIEW" :block="isMobile"></v-checkbox>
-            </v-col>
+            <v-spacer v-if="!isMobile"></v-spacer>
+            <v-col v-if="!isMobile" cols="12" sm="auto">
+                <v-menu offset-y :close-on-content-click="false">
+                    <template v-slot:activator="{ props }">
+                        <v-btn icon="mdi-cog" v-bind="props" elevation="0"></v-btn>
+                    </template>
+                    <v-card min-width="300">
+                        <v-card-text>
+                            <v-checkbox v-model="simplify" label="Simplified View"></v-checkbox>
+                            <v-text-field v-model="backendUrl" label="Backend URL" hint="e.g. http://localhost:21999/" persistent-hint></v-text-field>
+                        </v-card-text>
+                    </v-card>
+                </v-menu>
+            </v-col>                
         </v-row>
 
         <v-row id="tab-content">
@@ -163,11 +173,6 @@ import MenuComponent from '@/components/MenuComponent.vue'
 import axios from 'axios';
 import { useDisplay } from 'vuetify'
 
-const port = 21999;
-const local_url = `http://localhost:${port}/`
-const production_url = `https://web-cure.site:${port}/`
-
-
 export default {
     setup() {
         const { mobile } = useDisplay()
@@ -187,7 +192,9 @@ export default {
             showElementMenu: false,
             // Information on the bytes window for scrolling
             bytesTop: 0,
-            url: "",
+            // Configurable backend URL
+            backendUrl: "http://localhost:21999/",
+            reachable: false,
             // Flag to show if upload window should be shown
             load: false,
             // While exporting, loading is set to show the loading overlay
@@ -260,19 +267,19 @@ export default {
                     ]
                 },
                 {
-                    "title": "Duplicate node",
+                    "title": "DUPLICATE NODE",
                     "action": () => this.duplicateNode(this.activeNode)
                 },
                 {
-                    "title": "Delete node",
+                    "title": "DELETE NODE",
                     "action": () => this.deleteNode(this.activeNode)
                 },
                 {
-                    "title": "Edit node",
+                    "title": "EDIT NODE",
                     "action": () => { this.showElementMenu = true }
                 },
                 {
-                    "title": "Add child",
+                    "title": "ADD CHILD",
                     "action": () => {
                         this.parent = this.activeNode.id;
                         this.activeNode = null;
@@ -344,12 +351,11 @@ export default {
             const serialized = this.uint8ToBase64(z)
 
             try {
-                const response = await axios.post(this.url + "execute", serialized, {
+                const response = await axios.post(this.backendUrl + "execute", serialized, {
                     headers: {
                         'Content-Type': 'text/plain'
                     }
                 });
-
                 this.showReports = true;
 
                 let report = response.data.map(JSON.parse)
@@ -499,26 +505,15 @@ export default {
     async beforeCreate() {
         await init()
 
-        let url = ""
-        
         try {
-            await axios.post(local_url + "execute", serialized, {
+            await axios.post(this.backendUrl + "execute", serialized, {
                 headers: {
                     'Content-Type': 'text/plain'
                 }
             });
-            url = local_url
+            this.reachable = true;
         } catch (error) {
-            try {
-                await axios.post(production_url + "execute", serialized, {
-                    headers: {
-                        'Content-Type': 'text/plain'
-                    }
-                });
-                url = production_url
-            } catch (error) {
-                console.log("Could not reach backend at either local or production URL. Please ensure that the backend is running and accessible.")
-            }
+            this.reachable = false;
         }
     },
     mounted() {
