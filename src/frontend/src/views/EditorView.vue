@@ -1,263 +1,148 @@
 <template>
-    <!--Exporting the project as repository might take a while, show loading overlay in that time.-->
-    <v-overlay
-        v-model="loading"
-    >
+    <v-overlay v-model="loading">
         <v-progress-circular indeterminate color="primary"></v-progress-circular>
     </v-overlay>
-    <!--If some files are loaded already show upload window as overlay instead of as page content.-->
-    <v-overlay
-        v-model="load"
-    >
-        <UploadCard 
-            @upload="load = false"
-        ></UploadCard>
+
+    <v-overlay v-model="load">
+        <UploadCard @upload="load = false"></UploadCard>
     </v-overlay>
-    <!--Menu for modifying/creating nodes.-->
-    <v-overlay
-        v-model="showElementMenu"
-    >
-        <ElementMenu
-            :parent="parent"
-            :node="activeNode"
-            @close="showElementMenu = false"
-        ></ElementMenu>
+
+    <v-overlay v-model="showElementMenu">
+        <ElementMenu :parent="parent" :node="activeNode" @close="showElementMenu = false"></ElementMenu>
     </v-overlay>
-    <!-- Report Card, showing all the test reports created -->
-    <v-overlay
-        v-model="showReports"
-    >
-        <v-card
-        width="70vw"
-        height="70vh"
-        class="d-flex flex-column"
-    >
-        <v-card-title class="text-center bg-primary">
-            REPORTS
-        </v-card-title>
 
-        <v-card-text class="flex-grow-1 overflow-y-auto">
-            <v-row no-gutters class="h-100">
-                <v-col cols="2">
-                    <v-tabs
-                        v-model="reportTab"
-                        direction="vertical"
-                        class="h-100"
-                    >
-                        <v-tab
-                            v-for="(report, idx) in reports"
-                            :key="`tab-${idx}`"
-                            :value="idx"
-                            class="text-capitalize"
-                        >
-                            {{ report.name.replace(/_/g, ' ') }}
-                        </v-tab>
-                    </v-tabs>
-                </v-col>
+    <v-overlay v-model="showReports">
+        <v-card :width="isMobile ? '95vw' : '70vw'" :height="isMobile ? '90vh' : '70vh'" class="d-flex flex-column">
+            <v-card-title class="text-center bg-primary">REPORTS</v-card-title>
+            <v-card-text class="flex-grow-1 overflow-y-auto">
+                <v-row no-gutters class="h-100">
+                    <v-col cols="12" md="2">
+                        <v-tabs v-model="reportTab" :direction="isMobile ? 'horizontal' : 'vertical'" class="h-100" show-arrows>
+                            <v-tab v-for="(report, idx) in reports" :key="`tab-${idx}`" :value="idx" class="text-capitalize">
+                                {{ report.name.replace(/_/g, ' ') }}
+                            </v-tab>
+                        </v-tabs>
+                    </v-col>
 
-                <v-col cols="10">
-                    <v-window v-model="reportTab" class="h-100">
-                        <v-window-item
-                            v-for="(report, idx) in reports"
-                            :key="`window-${idx}`"
-                            :value="idx"
-                            class="pa-4"
-                        >
-                            <div
-                                v-for="(rp, i) in report.report.sort((a, b) => Number(b.crashed) - Number(a.crashed))"
-                                :key="i"
-                            >
-                                <h3>{{ rp.name }}</h3><br>
-                                <span :class="{crashed: rp.crashed}">{{ rp.crashed ? "Crash: True" : "Crash: False" }}</span>
-                                <br>
-                                <table v-if="!rp.crashed" class="table-bordered-centered">
-                                    <thead>
-                                    <tr>
-                                            <th>ASN</th>
-                                            <th>IP Prefix</th>
-                                            <th>Max Length</th>
-                                            <th>Trust Anchor</th>
-                                        </tr>                                        
-                                    </thead>
-                                    <tbody>
-                                        <tr
-                                            v-for="(vrp, i3) in rp.vrps.content"
-                                            :key="i3"    
-                                        >
-                                            <td>
-                                                {{ vrp.asn }}
-                                            </td> 
-                                            <td>
-                                                {{ vrp.ip.ip_s }}
-                                            </td>
-                                            <td>
-                                                {{ vrp.ip.max_len }}
-                                            </td>
-                                            <td>
-                                                ta
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                                <span :class="{crashed: rp.crashed}">Errors:</span> 
-                                <br>
-                                <pre 
-                                    class="text-pre-wrap"
-                                    :class="{'crashed-thin': rp.crashed}"
-                                >
-                                    {{ rp.errors }}
-                                </pre>
-                            </div>
-                        </v-window-item>
-                    </v-window>
-                </v-col>
-            </v-row>
-        </v-card-text>
+                    <v-col cols="12" md="10">
+                        <v-window v-model="reportTab" class="h-100">
+                            <v-window-item v-for="(report, idx) in reports" :key="`window-${idx}`" :value="idx" class="pa-4">
+                                <div v-for="(rp, i) in report.report.sort((a, b) => Number(b.crashed) - Number(a.crashed))" :key="i">
+                                    <h3>{{ rp.name }}</h3><br>
+                                    <span :class="{crashed: rp.crashed}">{{ rp.crashed ? "Crash: True" : "Crash: False" }}</span>
+                                    <br>
+                                    
+                                    <table v-if="!rp.crashed && !isMobile" class="table-bordered-centered">
+                                        <thead>
+                                            <tr>
+                                                <th>ASN</th>
+                                                <th>IP Prefix</th>
+                                                <th>Max Length</th>
+                                                <th>Trust Anchor</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="(vrp, i3) in rp.vrps.content" :key="i3">
+                                                <td>{{ vrp.asn }}</td>
+                                                <td>{{ vrp.ip.ip_s }}</td>
+                                                <td>{{ vrp.ip.max_len }}</td>
+                                                <td>ta</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                    
+                                    <div v-if="!rp.crashed && isMobile" class="mt-4">
+                                        <v-card v-for="(vrp, i3) in rp.vrps.content" :key="i3" class="mb-3" variant="outlined">
+                                            <v-card-text>
+                                                <div><strong>ASN:</strong> {{ vrp.asn }}</div>
+                                                <div><strong>IP Prefix:</strong> {{ vrp.ip.ip_s }}</div>
+                                                <div><strong>Max Length:</strong> {{ vrp.ip.max_len }}</div>
+                                                <div><strong>Trust Anchor:</strong> ta</div>
+                                            </v-card-text>
+                                        </v-card>
+                                    </div>
 
-        <v-divider></v-divider>
-
-        <v-card-actions class="pa-4">
-            <v-spacer></v-spacer>
-            <v-btn color="primary" variant="tonal">
-                Load Test Case
-            </v-btn>
-            <v-btn @click="showReports = false" color="grey" variant="tonal">
-                Close
-            </v-btn>
-        </v-card-actions>
-    </v-card>
+                                    <span :class="{crashed: rp.crashed}">Errors:</span>
+                                    <br>
+                                    <pre class="text-pre-wrap" :class="{'crashed-thin': rp.crashed}">
+                                        {{ rp.errors }}
+                                    </pre>
+                                </div>
+                            </v-window-item>
+                        </v-window>
+                    </v-col>
+                </v-row>
+            </v-card-text>
+            <v-divider></v-divider>
+            <v-card-actions class="pa-4">
+                <v-spacer></v-spacer>
+                <v-btn color="primary" variant="tonal" :size="isMobile ? 'small' : 'default'">Load Test Case</v-btn>
+                <v-btn @click="showReports = false" color="grey" variant="tonal" :size="isMobile ? 'small' : 'default'">Close</v-btn>
+            </v-card-actions>
+        </v-card>
     </v-overlay>
-    <v-container
-        fluid
-    >
-        <!-- Row for the action buttons, import, export, ... -->
+
+    <v-container fluid>
         <v-row>
-            <v-btn
-                color="primary"
-                class="ma-2"
-            >
-                IMPORT
-
-                <MenuComponent
-                    :items="import_items"
-                />
-            </v-btn>
-            <v-btn
-                color="primary"
-                class="ma-2"
-            >
-                EXPORT
-
-                <MenuComponent
-                    :items="formats.map(format => ({
-                        title: format.toUpperCase(),
-                        action: () => download(format)
-                    }))"
-                />           
-            </v-btn>
-            <v-btn
-                v-if="tree.length > 0"
-                color="primary"
-                class="ma-2"
-                @click="runTestCase"
-            >
-                RUN TEST CASE WITH CURE
-            </v-btn>
-            <v-btn
-                color="primary"
-                class="ma-2"
-                @click="showReports = true"
-            >
-                SHOW REPORTS
-            </v-btn>
-            <v-btn
-                v-if="tree.length > 0"
-                color="primary"
-                class="ma-2"
-                @click="$store.dispatch('setAll', !$store.getters.anyExpanded)"
-            >
-                {{  $store.getters.anyExpanded ? "COLLAPSE ALL" : "EXPAND ALL" }}
-            </v-btn>    
+            <v-col cols="12" sm="auto">
+                <v-btn color="primary" :block="isMobile">
+                    IMPORT
+                    <MenuComponent :items="import_items" />
+                </v-btn>
+            </v-col>
+            <v-col cols="12" sm="auto">
+                <v-btn color="primary" :block="isMobile">
+                    EXPORT
+                    <MenuComponent :items="formats.map(format => ({ title: format.toUpperCase(), action: () => download(format) }))" />
+                </v-btn>
+            </v-col>
+            <v-col cols="12" sm="auto" v-if="tree.length > 0">
+                <v-btn color="primary" @click="runTestCase" :block="isMobile">
+                    RUN TEST CASE WITH CURE
+                </v-btn>
+            </v-col>
+            <v-col cols="12" sm="auto">
+                <v-btn color="primary" @click="showReports = true" :block="isMobile">
+                    SHOW REPORTS
+                </v-btn>
+            </v-col>
+            <v-col cols="12" sm="auto" v-if="tree.length > 0">
+                <v-btn color="primary" @click="$store.dispatch('setAll', !$store.getters.anyExpanded)" :block="isMobile">
+                    {{ $store.getters.anyExpanded ? "COLLAPSE ALL" : "EXPAND ALL" }}
+                </v-btn>
+            </v-col>
         </v-row>
-        <v-row
-            id="tab-content"
-        >
-            <v-col
-                id="tabs"
-                cols="2"
-            >
-                <v-tabs
-                    :value="$store.currentTab" 
-                    direction="vertical"
-                >
-                    <v-tab 
-                        v-for="tab, idx in tabs" 
-                        :key="idx" 
-                        @click="$store.commit('tabSelected', tab.id)"
-                        style="width: 100%"
-                    >
-                        <div
-                            style="width: 100%; display: flex; justify-content: space-between; align-items: center;" 
-                        >
-                            <div>{{ tab.name }}</div>
-                            <div>
-                                <v-btn
-                                    elevation="0"
-                                    icon="mdi-close"
-                                    size="x-small"
-                                    @click.stop="$store.commit('tabRemoved', tab.id)"
-                                ></v-btn>
-                            </div>
+
+        <v-row id="tab-content">
+            <v-col id="tabs" cols="12" md="2">
+                <v-tabs :value="$store.currentTab" :direction="isMobile ? 'horizontal' : 'vertical'" show-arrows>
+                    <v-tab v-for="tab, idx in tabs" :key="idx" @click="$store.commit('tabSelected', tab.id)">
+                        <div style="width: 100%; display: flex; justify-content: space-between; align-items: center;">
+                            <div class="text-truncate">{{ tab.name }}</div>
+                            <v-btn elevation="0" icon="mdi-close" size="x-small" @click.stop="$store.commit('tabRemoved', tab.id)"></v-btn>
                         </div>
                     </v-tab>
-                    <v-tab
-                        @click="$store.commit('tabAdded', 'Unnamed')"
-                        style="justify-content: center;"
-                    >
-                        <v-icon
-                            style="margin-bottom: 0.13rem;"
-                        >
-                            mdi-plus
-                        </v-icon>
+                    <v-tab @click="$store.commit('tabAdded', 'Unnamed')" style="justify-content: center;">
+                        <v-icon>mdi-plus</v-icon>
                     </v-tab>
                 </v-tabs>
             </v-col>
-            <v-col
-                cols="7"
-            >
-                <div
-                    :style="{ position: 'absolute', left: `${x}px`, top: `${y}px` }"
-                    ref="activator"
-                >
-                     <MenuComponent
-                        :items="context_items"
-                    />           
+
+            <v-col cols="12" md="7">
+                <div :style="{ position: 'absolute', left: `${x}px`, top: `${y}px` }" ref="activator">
+                    <MenuComponent :items="context_items" />
                 </div>
                 <div class="asn-tree">
-                    <TreeNode 
-                        v-if="tree.length > 0"
-                        :node="findRoot()"
-                        @rightclick="(x, y, id) => openMenu(x, y, id)"
-                    />
-                    <p 
-                        v-else
-                        style="text-justify: center; font-size: 1.5rem; margin-top: 20px;"
-                    >
+                    <TreeNode v-if="tree.length > 0" :node="findRoot()" @rightclick="(x, y, id) => openMenu(x, y, id)" />
+                    <p v-else class="text-h6 text-center pa-5">
                         No ASN.1 data loaded. Please upload a file or select an example.
                     </p>
                 </div>
             </v-col>
-            <v-col
-                cols="3"
-            >
-                <div 
-                    class="bytes" 
-                    ref="bytes"
-                >
-                    <ByteNode
-                        v-if="tree.length > 0"
-                        :node="findRoot()"
-                    ></ByteNode>
+
+            <v-col cols="12" md="3">
+                <div class="bytes" ref="bytes">
+                    <ByteNode v-if="tree.length > 0" :node="findRoot()"></ByteNode>
                 </div>
             </v-col>
         </v-row>
@@ -272,8 +157,13 @@ import UploadCard from '@/components/UploadCard.vue'
 import ElementMenu from '@/components/ElementMenu.vue'
 import MenuComponent from '@/components/MenuComponent.vue'
 import axios from 'axios';
+import { useDisplay } from 'vuetify'
 
 export default {
+    setup() {
+        const { mobile } = useDisplay()
+        return { isMobile: mobile }
+    },
     data() {
         return {
             // position of context menu activator
@@ -297,37 +187,37 @@ export default {
             // Menu Items shown when clicking the "Import" button
             import_items: [
                 {
-                    "title": "file",
+                    "title": "FILE",
                     "action": () => this.load = true
                 },
                 {
-                    "title": "example",
+                    "title": "EXAMPLE",
                     "action": () => "",
                     "children": [
                         {
-                            "title": "roa",
+                            "title": "ROA",
                             "action": () => this.loadExample("roa")
                         },
                         {
-                            "title": "mft",
+                            "title": "MFT",
                             "action": () => this.loadExample("mft")
                         },
                         {
-                            "title": "crl",
+                            "title": "CRL",
                             "action": () => this.loadExample("crl")
                         },
                         {
-                            "title": "cer",
+                            "title": "CER",
                             "action": () => this.loadExample("cer")
                         },
                         {
-                            "title": "asa",
+                            "title": "ASA",
                             "action": () => this.loadExample("asa")
                         },
                         {
-                            "title": "gbr",
+                            "title": "GBR",
                             "action": () => this.loadExample("gbr")
-                        }                        
+                        }
                     ]
                 }
             ],
@@ -353,10 +243,10 @@ export default {
                 },
                 {
                     "title": "Add child",
-                    "action": () => { 
-                        this.parent = this.activeNode.id; 
-                        this.activeNode = null; 
-                        this.showElementMenu = true 
+                    "action": () => {
+                        this.parent = this.activeNode.id;
+                        this.activeNode = null;
+                        this.showElementMenu = true
                     }
                 }
             ]
@@ -374,7 +264,6 @@ export default {
             return this.$store.getters.state
         },
         tree: function () {
-            console.log(this.$store.getters.tree)
             return this.$store.getters.tree
         },
         tabs: function () {
@@ -452,7 +341,7 @@ export default {
                 console.log(serialized);
                 alert("Error during test case execution. Please check the console for details.");
             }
-        },  
+        },
         openMenu(x, y, id) {
             // X and Y are the coordinates of the rightclick event
             // move the activator component to there and click it so that
@@ -462,7 +351,7 @@ export default {
             this.$refs.activator.click()
             this.activeNode = this.$store.getters.getNodeFromId(id);
         },
-        copy (type) {
+        copy(type) {
             // TODO It should be possible to copy the content of a node in a variety of different
             // formats, and also possible to copy and paste full nodes to a new location in the tree
             if (type == "node") {
@@ -471,7 +360,7 @@ export default {
                 navigator.clipboard.writeText(this.activeNode.content[1]);
             }
         },
-        deleteNode: function() {
+        deleteNode: function () {
             // Confirm with user that he actually wants to delete the node
             confirm("Are you sure you want to delete this node?") && this.$store.commit("nodeRemoved", {
                 id: this.activeNode.id,
@@ -501,7 +390,7 @@ export default {
                     content = this.state.export_bin()
                     fileName += ".bin"
                     type = "application/octet-stream"
-                    break 
+                    break
                 case "base64":
                     content = this.state.export_base64()
                     fileName += ".txt"
@@ -542,9 +431,9 @@ export default {
                 tab: this.$store.state.currentTab,
                 type: "example",
                 data: type
-            })                        
+            })
         },
-        handleKeydown (event) {
+        handleKeydown(event) {
             // Key handlers to allow undo and redo using ctrl + z and ctrl + y
             if (event.ctrlKey && event.key === 'z') {
                 this.$store.dispatch('undo')
@@ -641,4 +530,10 @@ export default {
     justify-content: center;
 }
 
+/* Add this media query for mobile screens */
+@media (max-width: 960px) { /* 960px is Vuetify's 'md' breakpoint */
+  .asn-tree, .bytes {
+    height: 50vh; /* Reduce height on mobile to prevent excessive scrolling inside the element */
+  }
+}
 </style>

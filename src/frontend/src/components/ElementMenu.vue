@@ -1,63 +1,71 @@
 <template>
     <v-card
-        width="50vw"
-        height="50vh"
+        :width="isMobile ? '95vw' : '50vw'"
+        :max-height="isMobile ? '90vh' : '70vh'"
+        class="d-flex flex-column"
     >
         <v-overlay
             v-model="pick"
-            style="justify-content: center; align-items: center;"
+            class="d-flex justify-center align-center"
+            persistent
         >
-            <v-card>
+            <v-card :width="isMobile ? '90vw' : 'auto'">
                 <v-card-text>
                     <v-row>
-                        <v-date-picker
-                            v-model="date"
-                        ></v-date-picker>
-                        <v-time-picker
-                            v-model="time"
-                            :use-seconds="true"
-                        ></v-time-picker>
+                        <v-col cols="12" md="auto">
+                            <v-date-picker
+                                v-model="date"
+                            ></v-date-picker>
+                        </v-col>
+                        <v-col cols="12" md="auto">
+                            <v-time-picker
+                                v-model="time"
+                                :use-seconds="true"
+                            ></v-time-picker>
+                        </v-col>
                     </v-row>
                 </v-card-text>
                 <v-card-actions>
+                    <v-spacer></v-spacer>
                     <v-btn
                         @click="confirmTime"
+                        color="primary"
+                        variant="tonal"
                     >
                         Confirm
                     </v-btn>
                     <v-btn
                         @click="pick = false"
+                        variant="tonal"
                     >
                         Cancel
                     </v-btn>
                 </v-card-actions>
             </v-card>
         </v-overlay>
-        <v-card-title
-            style="text-align: center;"
-            class="mb-5"
-        >
+
+        <v-card-title class="text-center flex-shrink-0">
             {{ node ? 'Edit Node' : 'Add Node' }}
         </v-card-title>
-        <v-card-text>
+        
+        <v-card-text class="flex-grow-1 overflow-y-auto">
             <v-row>
                 <v-select
                     v-model="tag"
                     label="ASN.1 TYPE"
-                    :items="Object.entries(types).map((item => {
-                        [key, value] = item
-                        return {
-                            'title': value.name,
-                            'value': key
-                        }
+                    :items="Object.entries(types).map(([key, value]) => ({
+                        title: value.name,
+                        value: key
                     }))"
-                ></v-select>            
+                    density="compact"
+                ></v-select>
             </v-row>
             <v-row>
                 <v-text-field
                     v-model="label"
                     label="Label"
                     placeholder="Label"
+                    density="compact"
                 ></v-text-field>
             </v-row>
             <v-row>
@@ -65,51 +73,38 @@
                     v-model="length"
                     label="Length"
                     placeholder="Length"
+                    density="compact"
                 ></v-text-field> 
             </v-row>
-            <v-row
-                v-if="tag != null"
-            >
-                <v-col
-                    cols="10"
-                >
+            <v-row v-if="tag != null">
+                <v-col cols="10">
                     <v-text-field
                         v-if="types[tag]['completions'].length == 0"
                         v-model="content"
                         label="Content" 
                         :placeholder="types[tag]['example']"
+                        density="compact"
                     ></v-text-field>
                     <AutoComplete
                         v-else
                         v-model="content"
                         label="Content"
                         :completions="types[tag]['completions']"
-                    ></AutoComplete>                         
+                    ></AutoComplete>
                 </v-col>
-                <v-col
-                    cols="2"
-                >
+                <v-col cols="2" class="d-flex align-center">
                     <v-btn
                         v-if="timeTypes.includes(types[tag]['name'])"
                         icon
                         @click="pick = true"
+                        variant="text"
+                        size="small"
                     >
-                        <v-icon
-                            icon="mdi-calendar"                            
-                        ></v-icon>
+                        <v-icon icon="mdi-calendar"></v-icon>
                     </v-btn>
-                    <v-btn
-                        icon
-                        elevation="0"
-                        style="cursor: pointer"
-                    >
-                        <v-icon
-                            icon="mdi-help-circle"
-                        ></v-icon>
-                        <v-tooltip
-                            activator="parent"
-                            location="bottom"
-                        >
+                    <v-btn icon variant="text" size="small">
+                        <v-icon icon="mdi-help-circle"></v-icon>
+                        <v-tooltip activator="parent" location="bottom">
                             <span
                                 v-for="(chunk, index) in types[tag]['description'].split('\n')"
                                 :key="index"
@@ -122,24 +117,30 @@
                 </v-col>
             </v-row>
         </v-card-text>
-        <v-card-actions
-            class="d-flex justify-end"
-            style="position: absolute; bottom: 0; right: 0; left: 0;"
-        >
+        
+        <v-divider></v-divider>
+
+        <v-card-actions class="pa-4 flex-shrink-0">
+            <v-spacer></v-spacer>
             <v-btn
                 v-if="!node"
                 @click="addNode()"
+                color="primary"
+                variant="tonal"
             >
                 Add
             </v-btn>
             <v-btn
                 v-else
                 @click="changeNode()"
+                color="primary"
+                variant="tonal"
             >
-                Apply changes
+                Apply Changes
             </v-btn>
             <v-btn
                 @click="$emit('close')"
+                variant="tonal"
             >
                 Close
             </v-btn>
@@ -150,10 +151,15 @@
 <script>
 import moment from "moment";
 import { ASN1_TYPES, TIME_TYPES } from '@/utils/types';
-// import { VTimePicker } from 'vuetify/labs/VTimePicker'
-import AutoComplete from '@/components/AutoComplete.vue'
+import AutoComplete from '@/components/AutoComplete.vue';
+import { useDisplay } from 'vuetify'; // NEW: Import useDisplay
 
 export default {
+    // NEW: Add setup function to use composables
+    setup() {
+        const { mobile } = useDisplay();
+        return { isMobile: mobile };
+    },
     components: {
         AutoComplete
     },
@@ -177,50 +183,38 @@ export default {
             types: ASN1_TYPES,
             timeTypes: TIME_TYPES,
             pick: false,
-            date: null,
-            time: null
+            date: new Date(),
+            time: new Date().toLocaleTimeString('en-GB')
         };
     },
     methods: {
         translate(value) {
-            // Translate invalid values into a hex string representation with leading "0x"
             let bytes;
-
             if (typeof value === 'string') {
-                // Encode string to UTF-8 bytes
                 bytes = new TextEncoder().encode(value);
             } else if (typeof value === 'number') {
-                // Use 4 bytes (32-bit unsigned integer)
                 const buffer = new ArrayBuffer(4);
                 const view = new DataView(buffer);
-                view.setUint32(0, value, false); // false = big-endian
+                view.setUint32(0, value, false);
                 bytes = new Uint8Array(buffer);
             } else if (typeof value === 'object' && value !== null) {
-                // Convert object to JSON string then encode
                 const jsonStr = JSON.stringify(value);
                 bytes = new TextEncoder().encode(jsonStr);
             } else {
                 throw new TypeError("Unsupported type for hex conversion");
             }
-
             const hex = Array.from(bytes)
                 .map(b => b.toString(16).padStart(2, '0'))
                 .join('');
-
             return '0x' + hex;
         },
         confirmTime() {
-            // Combine date and time into a single moment object
             this.date.setHours(...this.time.split(':'));
             const moment_obj = moment(this.date);
-
-            // Format the time based on the ASN.1 type
             const type = ASN1_TYPES[this.tag].name;
-
             if (type == "TIME-OF-DAY") {
                 this.content = moment_obj.format('HH:mm:ss');
             } else if (type == "TIME") {
-                // TODO? TIME can be any of the formats 
                 console.log("TIME")
             } else if (type == "DATE") {
                 this.content = moment_obj.format('YYYY-MM-DD');
@@ -231,31 +225,21 @@ export default {
             } else if (type == "UTCTime") {
                 this.content = moment_obj.format('YYMMDDHHmmssZ');
             }
-
             this.pick = false;
         },
         verifyContent() {
-            if (this.content === "") return true;
-
-            // Check if tag and content are set
-            if (this.tag === null || this.content === null) return false;
-            // Check if the content is valid for the given type
-            if (ASN1_TYPES[this.tag].rules(this.content)) return true;             
-
-            // Users are allowed to enter invalid values if they want
-            // So we ask for confirmation before proceeding
+            if (this.content === "" || this.content === null) return true;
+            if (this.tag === null) return false;
+            if (ASN1_TYPES[this.tag].rules(this.content)) return true;
             if (!confirm("The content is not valid for the selected type. Do you still want to continue?")) {
                 return false;
             } else {
-                // The backend expects invalid values to be translated to a hex string
                 this.content = this.translate(this.content)
                 return true;
             }
         },
         addNode() {
-            // Check if the content is valid before adding the node
             if (!this.verifyContent()) return
-
             this.$store.commit('nodeAdded', {
                 tab: this.$store.state.currentTab,
                 parent: this.parent,
@@ -265,10 +249,7 @@ export default {
             });
         },
         changeNode() {
-            // Check if the content is valid before changing the node
             if (!this.verifyContent()) return
-
-            // Individually update all made changes
             if (this.node.tag[0] != this.tag) {
                 this.$store.commit("nodeUpdated", {
                     tab: this.$store.state.currentTab,
@@ -277,7 +258,6 @@ export default {
                     field: "tag"
                 })
             }
-
             if (this.node.label != this.label) {
                 this.$store.commit("nodeUpdated", {
                     tab: this.$store.state.currentTab,
@@ -286,16 +266,14 @@ export default {
                     field: "label"
                 })
             }
-
             if (this.node.length[0] != this.length) {
                 this.$store.commit("nodeUpdated", {
                     tab: this.$store.state.currentTab,
                     id: this.node.id,
                     value: this.length,
-                    field: "length"
+                    field: "field"
                 })
             }
-
             if (this.node.content[1] != this.content) {
                 this.$store.commit("nodeUpdated", {
                     tab: this.$store.state.currentTab,
@@ -304,7 +282,6 @@ export default {
                     field: "content"
                 })
             }
-
             this.$emit('close');
         }
     }

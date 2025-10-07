@@ -2,7 +2,9 @@
     <div 
         draggable="true"
         class="tree-node draggable"
-        @contextmenu.stop = "openMenu"
+        @contextmenu.stop="openMenu"
+        @touchstart.stop="handleTouchStart"
+        @touchend.stop="handleTouchEnd"
         @mouseover.stop="$store.commit('elementHighlighted', node.id)"
         @mouseleave.stop="$store.commit('elementHighlighted', -1)"
         @dragstart.stop="onDragStart"
@@ -36,7 +38,7 @@
                 ref="length"
             >
                 {{ node.length[1] }}
-            </span>         
+            </span>
             <span
                 v-if="node.content && !expandedContent"
                 class="node-content content"
@@ -44,7 +46,7 @@
             >
                 <span
                     v-if="node.content[1].length > 40"
-                    @click="expandedContent = true"
+                    @click.stop="expandedContent = true"
                 >
                     {{ node.content[1].slice(0, 20) }}...{{ node.content[1].slice(-20) }}
                 </span>
@@ -53,7 +55,7 @@
                 >
                     {{ node.content[1] }}
                 </span>
-            </span>                       
+            </span>
         </div>
         <div
             class="node-header"
@@ -62,10 +64,10 @@
             <span
                 class="node-content" 
                 ref="content"
-                @click="expandedContent = false"
+                @click.stop="expandedContent = false"
             >
                 {{ node.content[1] }}
-            </span>            
+            </span>
         </div>
         <div v-if="isExpanded && (hasChildren || isConstructed)" class="children">
             <div
@@ -77,23 +79,15 @@
                     @highlight="(id) => $emit('highlight', id)"
                     @rightclick="(x, y, id) => $emit('rightclick', x, y, id)"
                 /> 
-                <!-- 
-                    TODO: This div is currently unused and drag and drop will always enter
-                    an element at index 0, goal would be to allow dropping elements at a specific
-                    index of a list. When dragging an object over a list, there should be expanding
-                    blank spaces allowing to drop the element between children.
-                -->
                 <div 
                     @dragover="(event) => onDragOver(event, index)"
                     @dragleave="(event) => onDragLeave(event, index)"
                     class="children"
                     style="height: 1px;"
                     :class="{ 'expanded-line': $store.getters.isDragOver(child.id, 0) }"
-                ></div>               
+                ></div>
             </div>
-
         </div>
-        
     </div>
 </template>
 
@@ -106,46 +100,55 @@ export default {
     data() {
         return {
             expandedContent: false,
+            touchTimer: null, // Timer for long press detection
         };
     },
     computed: {
         hasChildren() {
-            // Check if the node has children
             return this.node.children && this.node.children.length > 0;
         },
         isConstructed() {
-            // 48 is the tag for the ASN type SEQUENCE and 49 for SET
             return this.node.tag[0] == 48 || this.node.tag[0] == 49;
         },
         isExpanded() {
-            // check if the children are currently shown
             return this.$store.getters.isExpanded(this.node.id);
         },
     },
     mounted: function () {
-        // Parents with only one child should be expanded by default
         if (this.node.children.length < 2) {
             this.toggleExpand(true)
         }
     },
     methods: {
+        // --- START: New methods for touch handling ---
+        handleTouchStart(event) {
+            // Clear any previous timer
+            clearTimeout(this.touchTimer);
+            // Start a new timer for 500ms. If the user holds, this will fire.
+            this.touchTimer = setTimeout(() => {
+                this.openMenu(event);
+            }, 500);
+        },
+        handleTouchEnd() {
+            // If the user lifts their finger before the timer finishes, cancel it.
+            clearTimeout(this.touchTimer);
+        },
+        // --- END: New methods for touch handling ---
         openMenu (event) {
-            // Open the context menu defined in the editor view for the clicked node
-            // preventDefault prevents the regular browser context menu from showing
             event.preventDefault();
-            this.$emit("rightclick", event.clientX, event.clientY, this.node.id);
+            
+            // Use touch coordinates if they exist, otherwise use mouse coordinates
+            const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+            const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+
+            this.$emit("rightclick", clientX, clientY, this.node.id);
         },
         onDragStart(event) {
-            // Make the dragged element semi-transparent
             event.target.style.opacity = "0.4"; 
         },
         onDragEnd(event) {
-            // Reset opacity
             event.target.style.opacity = ""; 
-
-            // Check if the drag ended over another element and not over itself
             if (this.$store.getters.target !== -1 && this.$store.getters.target[0] != this.node.id) {
-                // Move element to new location
                 this.$store.commit("nodeMoved", {
                     tab: this.$store.state.currentTab,
                     id: this.node.id,
@@ -153,14 +156,10 @@ export default {
                     index: this.$store.getters.target[1]
                 })
             }
-            // Reset drag target so that highlighting stops
             this.$store.commit("dragTargetSet", -1);
         },
         onDragOver(event, index) {
-            // Allow dropping, not sure what the browser default here is, 
-            // prevent it from happening anyway
             event.preventDefault(); 
-            // Set drag target to the node currently dragged over
             this.$store.commit("expandedSet", {
                 id: this.node.id,
                 expanded: true
@@ -168,10 +167,7 @@ export default {
             this.$store.commit("dragTargetSet", [this.node.id, index]);
         },
         onDragLeave(event) {
-            // See above
             event.preventDefault(); 
-            // no longer dragged over, remove drag target so an element dropped anywhere besides on a node
-            // jumps back into its old position
             this.$store.commit("dragTargetSet", [-1, -1]);
         },
         toggleExpand(value = null) {
@@ -183,16 +179,16 @@ export default {
     },
 };
 </script>
-  
+ 
 <style scoped>
 .tree-node {
-    padding-left: 20px; /* Indent children */
+    padding-left: 20px; /* Default indent for desktop */
 }
 
 .expanded-line {
-  height: 100px; /* allow full height */
-  white-space: normal; /* allow wrapping */
-  background-color: rgba(255, 255, 0, 0.1); /* highlight color */
+  height: 100px;
+  white-space: normal;
+  background-color: rgba(255, 255, 0, 0.1);
   box-shadow: 0 0 5px rgba(255, 255, 0, 0.1);
 }
 
@@ -205,11 +201,11 @@ export default {
 }
 
 .node-header:hover {
-    background-color: rgba(255, 255, 0, 0.1); /* Changes background color when hovered over automatically */
+    background-color: rgba(255, 255, 0, 0.1);
 }
 
 .dragover {
-    background-color: rgba(255, 255, 0, 0.1); /* Change the background color when dragged over */
+    background-color: rgba(255, 255, 0, 0.1);
 }
 
 .toggle-icon {
@@ -218,33 +214,45 @@ export default {
     cursor: pointer;
 }
 
+.node-tag, .node-label, .node-length, .node-content {
+    padding: 5px; /* Default padding for desktop */
+}
+
 .node-tag {
     font-weight: bold;
     color: #7EBDC2;
-    padding: 5px;
-}
-
-.node-label {
-    padding: 5px;
-}
-
-.node-length {
-    padding: 5px;
-}
-
-.node-content {
-    padding: 5px;
 }
 
 .children {
     border-left: 2px solid rgba(255, 255, 255, 0.2);
-    margin-left: 10px;
-    padding-left: 10px;
+    margin-left: 10px;  /* Default child indent for desktop */
+    padding-left: 10px; /* Default child indent for desktop */
 }
 
 .draggable {
     cursor: move;
     user-select: none;
 }
+
+/* --- START: New Responsive Styles for Mobile --- */
+@media (max-width: 768px) {
+    .tree-node {
+        padding-left: 10px; /* Reduced indentation */
+        font-size: 0.9rem;   /* Slightly smaller font */
+    }
+
+    .children {
+        margin-left: 5px;   /* Tighter margin for child nodes */
+        padding-left: 8px;  /* Tighter padding for child nodes */
+    }
+
+    .node-tag, .node-label, .node-length, .node-content {
+        padding: 3px;       /* Reduced padding within the node header */
+    }
+
+    .toggle-icon {
+        margin-right: 4px;  /* Less space for the toggle icon */
+    }
+}
+/* --- END: New Responsive Styles for Mobile --- */
 </style>
-  
