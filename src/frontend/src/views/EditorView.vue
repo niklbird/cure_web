@@ -239,12 +239,25 @@ export default {
             // Menu items of the context menu, new items can be added here
             context_items: [
                 {
-                    "title": "Copy node",
-                    "action": () => this.copy("node")
-                },
-                {
-                    "title": "Copy content",
-                    "action": () => this.copy("value")
+                    "title": "COPY ...",
+                    "children": [
+                        {
+                            "title": "NODE",
+                            "action": () => this.copy("node")
+                        },
+                        {
+                            "title": "CONTENT (HEX)",
+                            "action": () => this.copy("hex")
+                        },
+                        {
+                            "title": "CONTENT (BASE64)",
+                            "action": () => this.copy("base64")
+                        },
+                        {
+                            "title": "CONTENT (TEXT)",
+                            "action": () => this.copy("text")
+                        }
+                    ]
                 },
                 {
                     "title": "Duplicate node",
@@ -362,12 +375,19 @@ export default {
             this.$refs.activator.click()
             this.activeNode = this.$store.getters.getNodeFromId(id);
         },
+        dec2hex: function (i) {
+            return (i+0x10000).toString(16).substr(-2).toUpperCase();
+        },
         copy(type) {
-            // TODO It should be possible to copy the content of a node in a variety of different
-            // formats, and also possible to copy and paste full nodes to a new location in the tree
             if (type == "node") {
                 this.$store.commit("nodeCopied", this.activeNode)
-            } else if (type == "value") {
+            } else if (type == "hex") {
+                let array = this.activeNode.tag[2] + this.activeNode.length[2] + this.activeNode.content[2] 
+                navigator.clipboard.writeText(array.map(this.dec2hex).join(' '));
+            } else if (type == "base64") {
+                const base64String = this.uint8ToBase64(this.activeNode.content[2]);
+                navigator.clipboard.writeText(base64String);
+            } else if (type == "text") {
                 navigator.clipboard.writeText(this.activeNode.content[1]);
             }
         },
