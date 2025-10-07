@@ -76,7 +76,7 @@
             <v-divider></v-divider>
             <v-card-actions class="pa-4">
                 <v-spacer></v-spacer>
-                <v-btn color="primary" variant="tonal" :size="isMobile ? 'small' : 'default'">Load Test Case</v-btn>
+                <v-btn @click="loadTestCase(reports[reportTab].name, reports[reportTab].state)" color="primary" variant="tonal" :size="isMobile ? 'small' : 'default'">Load Test Case</v-btn>
                 <v-btn @click="showReports = false" color="grey" variant="tonal" :size="isMobile ? 'small' : 'default'">Close</v-btn>
             </v-card-actions>
         </v-card>
@@ -449,6 +449,14 @@ export default {
             this.loading = false
             document.body.removeChild(link);
             URL.revokeObjectURL(link.href);
+        },
+        loadTestCase: function (name, store) {
+            this.$store.commit("tabAdded", name)
+            this.$store.commit("stateSet", {
+                tab: this.$store.state.currentTab,
+                data: store,
+                type: "json"
+            });
         },
         loadExample: function (type) {
             this.$store.commit("tabAdded", type + "_example")
