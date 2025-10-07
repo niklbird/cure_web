@@ -70,7 +70,10 @@ export default createStore({
             return (dropTarget[0] == id) && (dropTarget[1] == index)
         },
         target: (state) => {
-            return state.currentTab < 0 ? -1 : state.tabs[state.currentTab].dragTarget
+            return state.currentTab < 0 ? [-1, -1] : state.tabs[state.currentTab].target
+        },
+        draggedNodeId: (state) => {
+            return state.currentTab > -1 ? state.tabs[state.currentTab].draggedNodeId : null
         },
         anyExpanded: (state) => {
             if (state.currentTab < 0) {
@@ -78,6 +81,36 @@ export default createStore({
             }
 
             return Object.values(state.tabs[state.currentTab].expanded).some((value) => value)
+        },
+        isDragging: (state) => {
+            return state.currentTab > -1 ? state.tabs[state.currentTab].isDragging : false
+        },
+        isDescendant: (state, getters) => (ancestorId, potentialDescendantId) => {
+            const ancestorNode = getters.getNodeFromId(ancestorId);
+            if (!ancestorNode || !ancestorNode.children || ancestorNode.children.length === 0) {
+                return false;
+            }
+
+            // Using a queue for a breadth-first search is efficient
+            const queue = [...ancestorNode.children];
+            while (queue.length > 0) {
+                const currentId = queue.shift();
+                if (currentId === potentialDescendantId) {
+                    return true;
+                }
+                const currentNode = getters.getNodeFromId(currentId);
+                if (currentNode && currentNode.children) {
+                    queue.push(...currentNode.children);
+                }
+            }
+            return false;
+        },
+        activeDropContextId: (state) => {
+            return state.currentTab > -1 ? state.tabs[state.currentTab].activeDropContextId : null
+        },
+        getParentId: (state, getters) => (childId) => {
+            const node = getters.getNodeFromId(childId);
+            return node ? node.parent : null;
         }
     },
     mutations: {
@@ -109,14 +142,16 @@ export default createStore({
                 positions: {},
                 expanded: {},
                 highlighted: -1,
-                dragTarget: -1,
+                target: [-1, -1],
+                isDragging: false,
+                activeDropContextId: null,
+                draggedNodeId: null,
                 copiedNode: null,
                 mutations: [],
                 count: 0
             }
 
             state.currentTab = id
-            console.log("Added tab", id)
         },
         tabRenamed: function (state, name) {
             state.tabs[state.currentTab].name = name
@@ -138,7 +173,16 @@ export default createStore({
             state.copiedNode = context
         },
         dragTargetSet: function (state, id) {
-            state.tabs[state.currentTab].dragTarget = id
+            state.tabs[state.currentTab].target = id
+        },
+        draggedNodeIdSet: function (state, id) {
+            state.tabs[state.currentTab].draggedNodeId = id
+        },
+        draggingSet: function (state, isDragging) {
+            state.tabs[state.currentTab].isDragging = isDragging
+        },
+        activeDropContextSet: function (state, id) {
+            state.tabs[state.currentTab].activeDropContextId = id
         },
         elementHighlighted: function (state, id) {
             state.tabs[state.currentTab].highlighted = id

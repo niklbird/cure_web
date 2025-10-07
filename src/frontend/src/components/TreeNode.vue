@@ -12,68 +12,36 @@
     >
         <div 
             class="node-header"  
-            :class="{ 'dragover': $store.getters.isDragOver(node.id, 0) }"
+            :class="{ 'dragover': isDragOver(node.children.length) }"
             @click="toggleExpand()"
-            @dragover="(event) => onDragOver(event, 0)"
-            @dragleave="(event) => onDragLeave(event, 0)"
+            @dragover.prevent="(event) => onDragOver(event, node.children.length)"
+            @dragleave="onDragLeave"
         >
             <span v-if="hasChildren || isConstructed" class="toggle-icon">{{ isExpanded ? "▼" : "▶" }}</span>
-            <span
-                v-if="node.tag" 
-                class="node-tag tag"
-                ref="tag"
-            >
-                {{ node.tag[1] }}
-            </span>
-            <span
-                v-if="node.label && !simplify"
-                class="node-label label"
-                ref="label"
-            >
-                {{ node.label }}
-            </span>
-            <span
-                v-if="node.length && !simplify" 
-                class="node-length length"
-                ref="length"
-            >
-                {{ node.length[1] }}
-            </span>
-            <span
-                v-if="node.content && !expandedContent"
-                class="node-content content"
-                ref="content"
-            >
-                <span
-                    v-if="node.content[1].length > 40"
-                    @click.stop="expandedContent = true"
-                >
+            <span v-if="node.tag" class="node-tag tag" ref="tag">{{ node.tag[1] }}</span>
+            <span v-if="node.label && !simplify" class="node-label label" ref="label">{{ node.label }}</span>
+            <span v-if="node.length && !simplify" class="node-length length" ref="length">{{ node.length[1] }}</span>
+            <span v-if="node.content && !expandedContent" class="node-content content" ref="content">
+                <span v-if="node.content[1].length > 40" @click.stop="expandedContent = true">
                     {{ node.content[1].slice(0, 20) }}...{{ node.content[1].slice(-20) }}
                 </span>
-                <span
-                    v-else
-                >
-                    {{ node.content[1] }}
-                </span>
+                <span v-else>{{ node.content[1] }}</span>
             </span>
         </div>
-        <div
-            class="node-header"
-            v-if="node.content && expandedContent"
-        >
-            <span
-                class="node-content" 
-                ref="content"
-                @click.stop="expandedContent = false"
-            >
-                {{ node.content[1] }}
-            </span>
+        <div class="node-header" v-if="node.content && expandedContent">
+            <span class="node-content" ref="content" @click.stop="expandedContent = false">{{ node.content[1] }}</span>
         </div>
+        
         <div v-if="isExpanded && (hasChildren || isConstructed)" class="children">
-            <div
-                v-for="(child, index) in node.children" 
-                :key="index"
-            >
+            <div 
+                v-if="showDropZones"
+                class="drop-zone"
+                :class="{ 'dragover-active': isDragOver(0) }"
+                @dragover.prevent="(event) => onDragOver(event, 0)"
+                @dragleave="onDragLeave"
+            ></div>
+
+            <div v-for="(child, index) in node.children" :key="child.id || index">
                 <TreeNode 
                     :node="$store.getters.getNodeFromId(child)" 
                     @highlight="(id) => $emit('highlight', id)"
@@ -81,11 +49,11 @@
                     :simplify="simplify"
                 /> 
                 <div 
-                    @dragover="(event) => onDragOver(event, index)"
-                    @dragleave="(event) => onDragLeave(event, index)"
-                    class="children"
-                    style="height: 1px;"
-                    :class="{ 'expanded-line': $store.getters.isDragOver(child.id, 0) }"
+                    v-if="showDropZones"
+                    class="drop-zone"
+                    :class="{ 'dragover-active': isDragOver(index + 1) }"
+                    @dragover.prevent="(event) => onDragOver(event, index + 1, true)"
+                    @dragleave="onDragLeave"
                 ></div>
             </div>
         </div>
@@ -94,6 +62,7 @@
 
 <script>
 export default {
+    // ... (props, emits, data are unchanged) ...
     props: {
         node: Object,
         simplify: Boolean
@@ -102,10 +71,15 @@ export default {
     data() {
         return {
             expandedContent: false,
-            touchTimer: null, // Timer for long press detection
+            touchTimer: null,
         };
     },
     computed: {
+        showDropZones() {
+            return this.$store.getters.isDragging /* && 
+                   (this.$store.getters.activeDropContextId === this.node.id ||
+                   this.$store.getters.activeDropContextId === this.node.parent)*/
+        },
         hasChildren() {
             return this.node.children && this.node.children.length > 0;
         },
@@ -116,61 +90,73 @@ export default {
             return this.$store.getters.isExpanded(this.node.id);
         },
     },
+    // ... (mounted is unchanged) ...
     mounted: function () {
         if (this.node.children.length < 2) {
             this.toggleExpand(true)
         }
     },
     methods: {
-        // --- START: New methods for touch handling ---
+        // ... (handleTouchStart, handleTouchEnd, openMenu are unchanged) ...
         handleTouchStart(event) {
-            // Clear any previous timer
             clearTimeout(this.touchTimer);
-            // Start a new timer for 500ms. If the user holds, this will fire.
-            this.touchTimer = setTimeout(() => {
-                this.openMenu(event);
-            }, 500);
+            this.touchTimer = setTimeout(() => { this.openMenu(event); }, 500);
         },
-        handleTouchEnd() {
-            // If the user lifts their finger before the timer finishes, cancel it.
-            clearTimeout(this.touchTimer);
-        },
-        // --- END: New methods for touch handling ---
+        handleTouchEnd() { clearTimeout(this.touchTimer); },
         openMenu (event) {
             event.preventDefault();
-            
-            // Use touch coordinates if they exist, otherwise use mouse coordinates
             const clientX = event.touches ? event.touches[0].clientX : event.clientX;
             const clientY = event.touches ? event.touches[0].clientY : event.clientY;
-
             this.$emit("rightclick", clientX, clientY, this.node.id);
         },
         onDragStart(event) {
-            event.target.style.opacity = "0.4"; 
+            event.dataTransfer.effectAllowed = 'move';
+            event.target.style.opacity = "0.4";
+            this.$store.commit("draggingSet", true);
+            this.$store.commit("draggedNodeIdSet", this.node.id);
         },
         onDragEnd(event) {
             event.target.style.opacity = ""; 
-            if (this.$store.getters.target !== -1 && this.$store.getters.target[0] != this.node.id) {
+            const target = this.$store.getters.target;
+            
+            const draggedId = this.$store.getters.draggedNodeId;
+            
+            // Ensure valid drop: not dropping onto itself or its own descendant
+            if ((target !== -1) && (target[0] != this.node.id) && !this.$store.getters.isDescendant(draggedId, target[0])) {
                 this.$store.commit("nodeMoved", {
                     tab: this.$store.state.currentTab,
                     id: this.node.id,
-                    target: this.$store.getters.target[0],
-                    index: this.$store.getters.target[1]
+                    target: target[0],
+                    index: target[1]
                 })
             }
+            // Reset all drag-related state
             this.$store.commit("dragTargetSet", -1);
+            this.$store.commit("draggingSet", false);
+            this.$store.commit("draggedNodeIdSet", null);
+            this.$store.commit("activeDropContextSet", null); // Reset context
         },
-        onDragOver(event, index) {
-            event.preventDefault(); 
-            this.$store.commit("expandedSet", {
-                id: this.node.id,
-                expanded: true
-            });
+        onDragOver(event, index, isDropZone = false) {
+            // Find this node's parent and set IT as the active context.
+            // If it has no parent (is a root node), its own drop zones will appear.
+            const parentId = this.node.parent;
+            this.$store.commit("activeDropContextSet", isDropZone ? this.node.id : parentId || this.node.id);
+            // --- END: CORE LOGIC CHANGE ---
+
+            /*if (!this.isExpanded) {
+                this.$store.commit("expandedSet", { id: this.node.id, expanded: true });
+            }*/
+            
+            // Set the specific target for dropping INTO this node
             this.$store.commit("dragTargetSet", [this.node.id, index]);
         },
-        onDragLeave(event) {
-            event.preventDefault(); 
+        onDragLeave() {
+            // No changes needed here, but kept for clarity
             this.$store.commit("dragTargetSet", [-1, -1]);
+        },
+        isDragOver(index) {
+            const target = this.$store.getters.target;
+            return target && target[0] === this.node.id && target[1] === index;
         },
         toggleExpand(value = null) {
             this.$store.commit("expandedSet", {
@@ -181,17 +167,23 @@ export default {
     },
 };
 </script>
- 
+
 <style scoped>
 .tree-node {
-    padding-left: 20px; /* Default indent for desktop */
+    padding-left: 20px;
 }
 
-.expanded-line {
-  height: 100px;
-  white-space: normal;
-  background-color: rgba(255, 255, 0, 0.1);
-  box-shadow: 0 0 5px rgba(255, 255, 0, 0.1);
+/* New/Updated Styles for Drop Zones */
+.drop-zone {
+    height: 5px; /* Small, invisible target area */
+    transition: height 0.2s ease, background-color 0.2s ease;
+}
+
+.drop-zone.dragover-active {
+    height: 20px; /* Expands to show where the drop will occur */
+    background-color: rgba(255, 255, 0, 0.2);
+    border-radius: 4px;
+    margin: 2px 0;
 }
 
 .node-header {
@@ -200,14 +192,15 @@ export default {
     display: flex;
     align-items: center;
     white-space: nowrap;
+    border-radius: 4px;
 }
 
 .node-header:hover {
     background-color: rgba(255, 255, 0, 0.1);
 }
 
-.dragover {
-    background-color: rgba(255, 255, 0, 0.1);
+.node-header.dragover {
+    background-color: rgba(255, 255, 0, 0.2); /* Highlight header for append drop */
 }
 
 .toggle-icon {
@@ -217,7 +210,7 @@ export default {
 }
 
 .node-tag, .node-label, .node-length, .node-content {
-    padding: 5px; /* Default padding for desktop */
+    padding: 5px;
 }
 
 .node-tag {
@@ -227,8 +220,8 @@ export default {
 
 .children {
     border-left: 2px solid rgba(255, 255, 255, 0.2);
-    margin-left: 10px;  /* Default child indent for desktop */
-    padding-left: 10px; /* Default child indent for desktop */
+    margin-left: 10px;
+    padding-left: 10px;
 }
 
 .draggable {
@@ -236,25 +229,23 @@ export default {
     user-select: none;
 }
 
-/* --- START: New Responsive Styles for Mobile --- */
 @media (max-width: 768px) {
     .tree-node {
-        padding-left: 10px; /* Reduced indentation */
-        font-size: 0.9rem;   /* Slightly smaller font */
+        padding-left: 10px;
+        font-size: 0.9rem;
     }
 
     .children {
-        margin-left: 5px;   /* Tighter margin for child nodes */
-        padding-left: 8px;  /* Tighter padding for child nodes */
+        margin-left: 5px;
+        padding-left: 8px;
     }
 
     .node-tag, .node-label, .node-length, .node-content {
-        padding: 3px;       /* Reduced padding within the node header */
+        padding: 3px;
     }
 
     .toggle-icon {
-        margin-right: 4px;  /* Less space for the toggle icon */
+        margin-right: 4px;
     }
 }
-/* --- END: New Responsive Styles for Mobile --- */
 </style>
