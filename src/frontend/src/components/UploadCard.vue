@@ -134,7 +134,7 @@ export default {
                 await this.processFile(file);
 
                 // Logic to decide whether to show the dialog or open in a new tab
-                if (multiple || this.$store.getters.tabs.length > 0) {
+                if (multiple || this.$store.getters.tabs.length == 0) {
                     this.open(true); // Always open in a new tab for multiple files or if other tabs exist
                 } else {
                     this.dialog = true; // Show dialog only for the first single file
