@@ -34,6 +34,7 @@
         </v-dialog>        
         <!-- Drop zone with handlers for paste, drag and drop and clicks -->
         <div
+            style="background-color: white; border-radius: 8px;"
             class="drop-zone"
             :class="{ 'hovered': dragOver }"  
             @dragover.prevent="dragOver = true"
@@ -42,17 +43,24 @@
             @click="triggerFileInput"
             @paste="handlePaste"
         >
-            <span>
-                Paste base64 content, drag & drop files here or click to browse
-                <div v-if="file">
-                    <span 
-                        class="mt-4"
-                        style="vertical-align:middle"
-                    >
-                        {{ file.name }}
-                    </span>
-                </div>
-            </span>
+            <v-col>
+                <v-row>
+                    <span>
+                        Paste base64 content below, drag & drop files here or click to browse
+                        <div v-if="file">
+                            <span 
+                                class="mt-4"
+                                style="vertical-align:middle"
+                            >
+                                {{ file.name }}
+                            </span>
+                        </div>
+                    </span>                      
+                </v-row>
+                <v-row>
+                    <v-textarea @click.stop></v-textarea>
+                </v-row>
+            </v-col>            
             <!-- File input is hidden but triggered when clicking anywhere in the dropzone -->
             <input type="file" ref="fileInput" style="display: none" @change="handleFileSelect" />
         </div>
