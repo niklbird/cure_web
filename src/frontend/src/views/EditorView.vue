@@ -107,9 +107,13 @@
                 </v-btn>
             </v-col>
             <v-col cols="12" sm="auto" v-if="tree.length > 0">
-                <v-btn color="primary" @click="$store.dispatch('setAll', !$store.getters.anyExpanded)" :block="isMobile">
+                <v-btn v-if="!isMobile" color="primary" @click="$store.dispatch('setAll', !$store.getters.anyExpanded)">
                     {{ $store.getters.anyExpanded ? "COLLAPSE ALL" : "EXPAND ALL" }}
                 </v-btn>
+            </v-col>
+            <v-spacer></v-spacer>
+            <v-col cols="12" sm="auto">
+                <v-checkbox v-model="simplify" label="SIMPLIFIED VIEW" :block="isMobile"></v-checkbox>
             </v-col>
         </v-row>
 
@@ -133,7 +137,7 @@
                     <MenuComponent :items="context_items" />
                 </div>
                 <div class="asn-tree">
-                    <TreeNode v-if="tree.length > 0" :node="findRoot()" @rightclick="(x, y, id) => openMenu(x, y, id)" />
+                    <TreeNode v-if="tree.length > 0" :node="findRoot()" @rightclick="(x, y, id) => openMenu(x, y, id)" :simplify="simplify || isMobile"/>
                     <p v-else class="text-h6 text-center pa-5">
                         No ASN.1 data loaded. Please upload a file or select an example.
                     </p>
@@ -191,6 +195,8 @@ export default {
             reports: [],
             showReports: false,
             reportTab: 0,
+            // Flag whether to show the tree in simplified mode or not
+            simplify: false,
             // Menu Items shown when clicking the "Import" button
             import_items: [
                 {
@@ -239,6 +245,10 @@ export default {
                 {
                     "title": "Copy content",
                     "action": () => this.copy("value")
+                },
+                {
+                    "title": "Duplicate node",
+                    "action": () => this.duplicateNode(this.activeNode)
                 },
                 {
                     "title": "Delete node",
@@ -360,6 +370,20 @@ export default {
             } else if (type == "value") {
                 navigator.clipboard.writeText(this.activeNode.content[1]);
             }
+        },
+        duplicateNode(node) {
+            // Duplicate the selected node and add it as a sibling
+            if (!node) {
+                return
+            }
+
+            this.$store.commit("nodeAdded", {
+                tab: this.$store.state.currentTab,
+                tag: node.tag[0],
+                content: node.content[2],
+                parent: node.parent,
+                label: node.label
+            })
         },
         deleteNode: function () {
             // Confirm with user that he actually wants to delete the node

@@ -26,14 +26,14 @@
                 {{ node.tag[1] }}
             </span>
             <span
-                v-if="node.label"
+                v-if="node.label && !simplify"
                 class="node-label label"
                 ref="label"
             >
                 {{ node.label }}
             </span>
             <span
-                v-if="node.length" 
+                v-if="node.length && !simplify" 
                 class="node-length length"
                 ref="length"
             >
@@ -78,6 +78,7 @@
                     :node="$store.getters.getNodeFromId(child)" 
                     @highlight="(id) => $emit('highlight', id)"
                     @rightclick="(x, y, id) => $emit('rightclick', x, y, id)"
+                    :simplify="simplify"
                 /> 
                 <div 
                     @dragover="(event) => onDragOver(event, index)"
@@ -94,7 +95,8 @@
 <script>
 export default {
     props: {
-        node: Object
+        node: Object,
+        simplify: Boolean
     },
     emits: ["rightclick"],
     data() {
