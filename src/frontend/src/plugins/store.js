@@ -105,7 +105,7 @@ export default createStore({
                 id: id,
                 name: name,
                 state: null,
-                tree: null,
+                tree: [],
                 positions: {},
                 expanded: {},
                 highlighted: -1,
@@ -116,6 +116,7 @@ export default createStore({
             }
 
             state.currentTab = id
+            console.log("Added tab", id)
         },
         tabRenamed: function (state, name) {
             state.tabs[state.currentTab].name = name
