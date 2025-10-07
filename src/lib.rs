@@ -4,7 +4,7 @@ use regex::Regex;
 use tar::Builder;
 use wasm_bindgen::prelude::*;
 use cure_asn1::{rpki::ObjectType, tree_parser::Tree};
-use std::{fs, io::Cursor};
+use std::io::Cursor;
 
 use flate2::write::GzEncoder;
 use flate2::Compression;
@@ -219,6 +219,7 @@ impl State{
         else{
             let conf = repository_util::RepoConfig::default();
             repo = new_repo(&conf, &ObjectType::UNKNOWN, true);
+            repo.fix_all_objects(true);
 
             parent_key = repo.certificate.child_key.clone();
         }
@@ -375,6 +376,10 @@ impl State{
 }
 
 fn val_to_bytes(typ: u8, value: String) -> Result<Vec<u8>, String>{
+    if value == "".to_string(){
+        return Ok(vec![]);
+    }
+    
     match typ{
         0x01 => { // Boolean
             let v = value.parse::<u8>();
@@ -393,6 +398,16 @@ fn val_to_bytes(typ: u8, value: String) -> Result<Vec<u8>, String>{
             return Ok(in_to_byt(v.unwrap()));
         }
         0x03 | 0x23 => { // BIT STRING
+            // Could be IP
+            if value.contains(".") || value.contains(":"){
+                let v = cure_asn1::rpki_utils::parse_ip_from_string(&value);
+                // v.unwrap();
+                // println!("Failed to parse IP");
+                if v.is_ok(){
+                    return Ok(v.unwrap());
+                }
+            }
+
             let rev = value.chars().rev().collect::<String>();
             let mut ret_v = vec![];
             let mut padding = 0;
@@ -549,14 +564,9 @@ fn in_to_byt(inp: i64) -> Vec<u8> {
 }
 
 // pub fn test(){
-//     let mut state = State::load_example("roa").unwrap();
-//     // state.add_node(2, "1".to_string(), 0, "".to_string()).unwrap();
-//     // state.adapt_node_tag(0, 43).unwrap();
-
-//     // println!("{}: {}",state.into_rpki_repo()[0].uri(), state.into_rpki_repo()[0].content());
-//     // println!("{}", base64::encode(state.tree.encode()));
-//     let z = state.repositorify();
-//     fs::write("test2.zip", z);
+//     let mut state = State::load_example("gbr").unwrap();
+//     state.get_nodes();
+//     println!("{}", state.tree.encode_b64());
 // }
 
 
