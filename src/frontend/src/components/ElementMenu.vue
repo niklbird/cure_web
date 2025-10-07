@@ -150,12 +150,11 @@
 <script>
 import moment from "moment";
 import { ASN1_TYPES, TIME_TYPES } from '@/utils/types';
-import { VTimePicker } from 'vuetify/labs/VTimePicker'
+// import { VTimePicker } from 'vuetify/labs/VTimePicker'
 import AutoComplete from '@/components/AutoComplete.vue'
 
 export default {
     components: {
-        VTimePicker,
         AutoComplete
     },
     props: {

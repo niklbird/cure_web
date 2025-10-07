@@ -5,13 +5,14 @@
     >
         <v-progress-circular indeterminate color="primary"></v-progress-circular>
     </v-overlay>
-    <!--If no file is loaded yet only show upload window, no editor yet.-->
     <!--If some files are loaded already show upload window as overlay instead of as page content.-->
-    <UploadCard 
-        v-if="tabs.length == 0 || load"
-        :overlay="tabs.length > 0"
-        @upload-done="load = false"
-    ></UploadCard>
+    <v-overlay
+        v-model="load"
+    >
+        <UploadCard 
+            @upload="load = false"
+        ></UploadCard>
+    </v-overlay>
     <!--Menu for modifying/creating nodes.-->
     <v-overlay
         v-model="showElementMenu"
@@ -127,7 +128,6 @@
     </v-card>
     </v-overlay>
     <v-container
-        v-if="tabs.length > 0"
         fluid
     >
         <!-- Row for the action buttons, import, export, ... -->
@@ -156,6 +156,7 @@
                 />           
             </v-btn>
             <v-btn
+                v-if="tree.length > 0"
                 color="primary"
                 class="ma-2"
                 @click="runTestCase"
@@ -170,6 +171,7 @@
                 SHOW REPORTS
             </v-btn>
             <v-btn
+                v-if="tree.length > 0"
                 color="primary"
                 class="ma-2"
                 @click="$store.dispatch('setAll', !$store.getters.anyExpanded)"
@@ -233,7 +235,7 @@
                 </div>
                 <div class="asn-tree">
                     <TreeNode 
-                        v-if="tree"
+                        v-if="tree.length > 0"
                         :node="findRoot()"
                         @rightclick="(x, y, id) => openMenu(x, y, id)"
                     />
@@ -253,7 +255,7 @@
                     ref="bytes"
                 >
                     <ByteNode
-                        v-if="tree"
+                        v-if="tree.length > 0"
                         :node="findRoot()"
                     ></ByteNode>
                 </div>
@@ -372,6 +374,7 @@ export default {
             return this.$store.getters.state
         },
         tree: function () {
+            console.log(this.$store.getters.tree)
             return this.$store.getters.tree
         },
         tabs: function () {
@@ -534,7 +537,7 @@ export default {
             URL.revokeObjectURL(link.href);
         },
         loadExample: function (type) {
-            this.$store.commit("tabRenamed", type + "_example")
+            this.$store.commit("tabAdded", type + "_example")
             this.$store.commit("stateSet", {
                 tab: this.$store.state.currentTab,
                 type: "example",
