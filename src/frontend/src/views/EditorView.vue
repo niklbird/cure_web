@@ -506,11 +506,7 @@ export default {
         await init()
 
         try {
-            await axios.post(this.backendUrl + "execute", serialized, {
-                headers: {
-                    'Content-Type': 'text/plain'
-                }
-            });
+            await axios.get(this.backendUrl + "probe");
             this.reachable = true;
         } catch (error) {
             this.reachable = false;

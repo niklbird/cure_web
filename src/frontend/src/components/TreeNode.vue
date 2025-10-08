@@ -18,8 +18,8 @@
             @dragleave="onDragLeave"
         >
             <span v-if="hasChildren || isConstructed" class="toggle-icon">{{ isExpanded ? "▼" : "▶" }}</span>
-            <span v-if="node.tag" class="node-tag tag" ref="tag">{{ node.tag[1] }}</span>
-            <span v-if="node.label && !simplify" class="node-label label" ref="label">{{ node.label }}</span>
+            <span v-if="node.tag && !simplify" class="node-tag tag" ref="tag">{{ node.tag[1] }}</span>
+            <span v-if="node.label " class="node-label label" ref="label">{{ node.label }}</span>
             <span v-if="node.length && !simplify" class="node-length length" ref="length">{{ node.length[1] }}</span>
             <span v-if="node.content && !expandedContent" class="node-content content" ref="content">
                 <span v-if="node.content[1].length > 40" @click.stop="expandedContent = true">
@@ -175,12 +175,12 @@ export default {
 
 /* New/Updated Styles for Drop Zones */
 .drop-zone {
-    height: 5px; /* Small, invisible target area */
+    height: 1px; /* Small, invisible target area */
     transition: height 0.2s ease, background-color 0.2s ease;
 }
 
 .drop-zone.dragover-active {
-    height: 20px; /* Expands to show where the drop will occur */
+    height: 1px; /* Expands to show where the drop will occur */
     background-color: rgba(255, 255, 0, 0.2);
     border-radius: 4px;
     margin: 2px 0;
