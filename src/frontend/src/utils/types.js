@@ -10,7 +10,7 @@
 export const ASN1_TYPES = {
     1: {
         name: "BOOLEAN",
-        rules: (value) => value in ["TRUE", "FALSE"],
+        rules: (value) => !isNaN(value),
         example: "True",
         description: `
             ASN.1 BOOLEAN tag: 01
@@ -22,7 +22,10 @@ export const ASN1_TYPES = {
             "TRUE",
             "FALSE"
         ],
-        transform: null
+        transform: {
+            "regex": /^(true|false)$/i,
+            "converter": (value) => value.toUpperCase() == "TRUE" ? "255" : "0"
+        }
     },
     2: {
         name: "INTEGER",
@@ -50,9 +53,9 @@ export const ASN1_TYPES = {
             // Check if it's a binary string ('...'B)
             if (/^[01]+$/.test(value)) return true;
             // Check if it's a hexadecimal string ('...'H)
-            if (/^0x[0-9A-F]+$/i.test(value)) return true;
+            // if (/^0x[0-9A-F]+$/i.test(value)) return true;
             // Check if it's a named bit list ({...})
-            if (/^\{([a-zA-Z0-9_]+(,\s*[a-zA-Z0-9_]+)*)?\}$/.test(value)) return true;
+            // if (/^\{([a-zA-Z0-9_]+(,\s*[a-zA-Z0-9_]+)*)?\}$/.test(value)) return true;
             if (/^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/.test(value)) return true; // IPv4
             if (/^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}(\/\d{1,2})?$/.test(value)) return true; // IPv6
 
@@ -70,38 +73,26 @@ export const ASN1_TYPES = {
             A BIT STRING containing all zero bits can be expressed using empty curly brackets. 
         `,
         completions: [],
-        transform: [
-            {
-                "regex": /^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/,
-                "converter": (value) => {
-                    // Convert IP string to binary
-                    value = value.split("/")[0];
-                    const parts = value.split(".");
-                    if (parts.length !== 4) return null;
-                    const binaryParts = parts.map(part => parseInt(part).toString(2).padStart(8, '0'));
-                    return binaryParts.join("");
-                },
-            },
-            {
-                "regex": /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}(\/\d{1,2})?$/,
-                "converter": (value) => {
-                    // Convert IPv6 string to binary
-                    value = value.split("/")[0];
-                    const parts = value.split(":");
-                    if (parts.length !== 8) return null;
-                    const binaryParts = parts.map(part => parseInt(part, 16).toString(2).padStart(16, '0'));
-                    return binaryParts.join("");
+        transform: {
+            "regex": /^0x[0-9A-F]+$/i,
+            "converter": (value) => {
+                // Convert hex string to binary string
+                let hex = value.slice(2); // Remove '0x' prefix
+                let binary = '';
+                for (let i = 0; i < hex.length; i++) {
+                    binary += parseInt(hex[i], 16).toString(2).padStart(4, '0');
                 }
+                return binary;
             }
-        ]
+        }
     },
     4: {
         name: "OCTET STRING",
         rules: (value) => {
             // Check if it's a binary string ('...'B)
-            if (/^'[01]+'B$/.test(value)) return true;
+            if (/^[01]+$/.test(value)) return true;
             // Check if it's a hexadecimal string ('...'H)
-            if (/^'[0-9A-F]+'H$/i.test(value)) return true;
+            if (/^[0-9A-F]+$/i.test(value)) return true;
             return false            
         },
         example: "A0F1H",
@@ -117,7 +108,7 @@ export const ASN1_TYPES = {
     },
     5: { 
         name: "NULL",
-        rules: (value) => value == "NULL",
+        rules: (value) => value == "",
         example: "NULL",
         description: `
             ASN.1 NULL tag: 05
@@ -310,7 +301,8 @@ export const ASN1_TYPES = {
             Identifiers have no effect on an encoded value of the type.
         `,
         completions: [],
-        transform: null
+        transform: null,
+        rules: (value) => true
     },
     49: {
         name: "SET",
@@ -326,7 +318,8 @@ export const ASN1_TYPES = {
             therefore it is recommended to use the SEQUENCE type whenever possible.
         `,
         completions: [],
-        transform: null
+        transform: null,
+        rules: (value) => true
     },
     18: {
         name: "NumericString",
