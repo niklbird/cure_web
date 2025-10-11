@@ -478,7 +478,7 @@ fn val_to_bytes(typ: u8, value: String) -> Result<Vec<u8>, String>{
             return Ok(val);
 
         }
-        0x0E | 0x2E => { // TIME
+        0x0E => { // TIME
             let parsed = chrono::DateTime::parse_from_rfc3339(&value)
             .map_err(|_| "Invalid ISO 8601 format. Example: 2025-02-12T14:30:00Z".to_string())?;
     
@@ -486,7 +486,7 @@ fn val_to_bytes(typ: u8, value: String) -> Result<Vec<u8>, String>{
             return Ok(generalized_time_string.as_bytes().to_vec());
 
         }
-        0x17 | 0x37 => { // UTC Time
+        0x17  => { // UTC Time
             // 2025-02-10 11:21:43
             let parsed = chrono::DateTime::parse_from_str(&value, "%Y-%m-%d %H:%M:%S");
             if parsed.is_err(){
@@ -495,7 +495,7 @@ fn val_to_bytes(typ: u8, value: String) -> Result<Vec<u8>, String>{
             let generalized_time_string = parsed.unwrap().to_utc().format("%Y%m%d%H%M%SZ").to_string();
             return Ok(generalized_time_string.as_bytes().to_vec());
         }
-        0x18 | 0x38 => { // GeneralizedTime
+        0x18  => { // GeneralizedTime
             let parsed = chrono::DateTime::parse_from_str(&value, "%Y-%m-%d %H:%M:%S");
             if parsed.is_err(){
                 return Err("Invalid date format. Required Format: %Y-%m-%d %H:%M:%S (E.g. 2025-01-30 11:21:43)".to_string());
@@ -512,20 +512,20 @@ fn val_to_bytes(typ: u8, value: String) -> Result<Vec<u8>, String>{
         0x11 | 0x31 => { // Set
             return Ok(vec![]);
         }
-        0x1F | 0x3F => { // Date
+        0x1F  => { // Date
             let new_s = value.replace("-", "");
             return Ok(new_s.as_bytes().to_vec());
         }
-        0x20 | 0x40 => { // Time of day
+        0x20  => { // Time of day
             let new_s = value.replace(":", "");
 
             return Ok(new_s.as_bytes().to_vec());
         }
-        0x21 | 0x41 => { // Date-Time
+        0x21  => { // Date-Time
             let new_s = value.replace("-", "").replace(":", "");
             return Ok(new_s.as_bytes().to_vec());
         }
-        0x22 | 0x42 => { // Duration
+        0x22  => { // Duration
             return encode_duration_iso8601(&value);
         }
         _ => { // Dont support external or embedded pdv 
