@@ -290,7 +290,7 @@ impl State{
     }
 
     #[wasm_bindgen]
-    pub fn add_node(&mut self, typ: u8, value: String, parent: usize, label: String) -> Result<(), String>{
+    pub fn add_node(&mut self, typ: u8, value: String, parent: usize, label: String, child_position: Option<usize>) -> Result<(), String>{
         if self.tree.tokens.get(&parent).is_none(){
             return Err("Invalid parent".to_string());
         }
@@ -304,7 +304,7 @@ impl State{
             Some(label)
         };
 
-        self.tree.add_node(typ, val, parent, label);
+        self.tree.add_node(typ, val, parent, label, child_position);
         Ok(())
     }
 
