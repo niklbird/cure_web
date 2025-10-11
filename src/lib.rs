@@ -13,9 +13,9 @@ use flate2::Compression;
 pub struct Node{
     pub id: usize,
     pub label: String, 
-    pub tag: (u8, String, Vec<u8>), // Value, Display Value, Binary Value
+    pub tag: (u8, String, Vec<u8>), // Value, Display Value, Human Readablbe, Binary Value
     pub length: (usize, String, Vec<u8>), 
-    pub content: (String, String, Vec<u8>),  // 
+    pub content: (String, String, String, Vec<u8>),  // 
     pub children: Vec<usize>,
     pub parent: usize,
 }
