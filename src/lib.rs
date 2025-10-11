@@ -1,5 +1,6 @@
 use chrono::Utc;
 use cure_pp::{cure_object::CureObject, cure_repo::{self, new_repo}, repository_util::{self, load_random_key, random_fname}};
+use hex::FromHex;
 use regex::Regex;
 use tar::Builder;
 use wasm_bindgen::prelude::*;
@@ -378,6 +379,11 @@ impl State{
 fn val_to_bytes(typ: u8, value: String) -> Result<Vec<u8>, String>{
     if value == "".to_string(){
         return Ok(vec![]);
+    }
+
+    if value.starts_with("0x") {
+        return hex::decode(value).map_err(|_| "Hex Decode Error".to_string());
+
     }
     
     match typ{
