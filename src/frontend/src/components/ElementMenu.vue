@@ -290,36 +290,21 @@ export default {
         },
         changeNode() {
             if (!this.verifyContent()) return
-            if (this.node.tag[0] != this.tag) {
-                this.$store.commit("nodeUpdated", {
-                    tab: this.$store.state.currentTab,
-                    id: this.node.id,
-                    value: this.tag,
-                    field: "tag"
-                })
-            }
+
+            this.$store.commit("nodeChanged", {
+                tab: this.$store.state.currentTab,
+                id: this.node.id,
+                tag: this.tag,
+                length: this.length[0] != this.length ? this.length : null,
+                content: this.content
+            })
+
             if (this.node.label != this.label) {
                 this.$store.commit("nodeUpdated", {
                     tab: this.$store.state.currentTab,
                     id: this.node.id,
                     value: this.label,
                     field: "label"
-                })
-            }
-            if (this.node.length[0] != this.length) {
-                this.$store.commit("nodeUpdated", {
-                    tab: this.$store.state.currentTab,
-                    id: this.node.id,
-                    value: this.length ? this.length : "",
-                    field: "length"
-                })
-            }
-            if (this.node.content[2] != this.content) {
-                this.$store.commit("nodeUpdated", {
-                    tab: this.$store.state.currentTab,
-                    id: this.node.id,
-                    value: this.content,
-                    field: "content"
                 })
             }
             this.$emit('close');
