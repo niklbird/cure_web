@@ -13,8 +13,9 @@ export class State {
   repositorify(): Uint8Array;
   static load_example(typ: string): State;
   get_nodes(): string;
-  add_node(typ: number, value: string, parent: number, label: string): void;
+  add_node(typ: number, value: string, parent: number, label: string, child_position?: number | null): void;
   adapt_node_content(id: number, new_content: string): void;
+  adapt_node_all(id: number, new_tag: number, new_length: number | null | undefined, new_content: string): void;
   adapt_node_length(id: number, new_length: number): void;
   adapt_node_tag(id: number, tag: number): void;
   adapt_node_label(id: number, new_label: string): void;
@@ -39,8 +40,9 @@ export interface InitOutput {
   readonly state_repositorify: (a: number) => [number, number];
   readonly state_load_example: (a: number, b: number) => [number, number, number];
   readonly state_get_nodes: (a: number) => [number, number];
-  readonly state_add_node: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number];
+  readonly state_add_node: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number];
   readonly state_adapt_node_content: (a: number, b: number, c: number, d: number) => [number, number];
+  readonly state_adapt_node_all: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
   readonly state_adapt_node_length: (a: number, b: number, c: number) => [number, number];
   readonly state_adapt_node_tag: (a: number, b: number, c: number) => [number, number];
   readonly state_adapt_node_label: (a: number, b: number, c: number, d: number) => [number, number];

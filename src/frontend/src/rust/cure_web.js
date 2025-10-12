@@ -259,13 +259,14 @@ export class State {
      * @param {string} value
      * @param {number} parent
      * @param {string} label
+     * @param {number | null} [child_position]
      */
-    add_node(typ, value, parent, label) {
+    add_node(typ, value, parent, label, child_position) {
         const ptr0 = passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         const ptr1 = passStringToWasm0(label, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len1 = WASM_VECTOR_LEN;
-        const ret = wasm.state_add_node(this.__wbg_ptr, typ, ptr0, len0, parent, ptr1, len1);
+        const ret = wasm.state_add_node(this.__wbg_ptr, typ, ptr0, len0, parent, ptr1, len1, isLikeNone(child_position) ? 0x100000001 : (child_position) >>> 0);
         if (ret[1]) {
             throw takeFromExternrefTable0(ret[0]);
         }
@@ -278,6 +279,20 @@ export class State {
         const ptr0 = passStringToWasm0(new_content, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         const ret = wasm.state_adapt_node_content(this.__wbg_ptr, id, ptr0, len0);
+        if (ret[1]) {
+            throw takeFromExternrefTable0(ret[0]);
+        }
+    }
+    /**
+     * @param {number} id
+     * @param {number} new_tag
+     * @param {number | null | undefined} new_length
+     * @param {string} new_content
+     */
+    adapt_node_all(id, new_tag, new_length, new_content) {
+        const ptr0 = passStringToWasm0(new_content, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.state_adapt_node_all(this.__wbg_ptr, id, new_tag, isLikeNone(new_length) ? 0x100000001 : (new_length) >>> 0, ptr0, len0);
         if (ret[1]) {
             throw takeFromExternrefTable0(ret[0]);
         }
