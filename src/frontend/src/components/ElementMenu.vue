@@ -47,7 +47,7 @@
 
         <v-card-text class="flex-grow-1" style="overflow-y: auto;">
             <v-form
-                @keydown.enter.prevent="console.log('Enter hit'); node ? changeNode() : addNode()"
+                @keydown.enter.prevent="node ? changeNode() : addNode()"
             >
                 <v-select
                     v-model="tag"
@@ -176,7 +176,7 @@ export default {
             tag: this.node ? this.node.tag[0] : null,
             label: this.node ? this.node.label : null,
             length: this.node ? this.node.length[0] : null,
-            content: this.node ? this.node.content[1] : null,
+            content: this.node ? this.node.content[2] : null,
             types: ASN1_TYPES,
             timeTypes: TIME_TYPES,
             pick: false,
@@ -218,7 +218,7 @@ export default {
             this.date.setHours(...this.time.split(':'));
             const moment_obj = moment(this.date);
             const type = ASN1_TYPES[this.tag].name;
-            console.log(type)
+
             if (type == "TIME-OF-DAY") {
                 this.content = moment_obj.format('HH:mm:ss');
             } else if (type == "TIME") {
@@ -264,10 +264,7 @@ export default {
             if (this.tag === null) return false;
             if (ASN1_TYPES[this.tag].rules(this.content)) return true;
             if (ASN1_TYPES[this.tag].transform) {
-                console.log("HAS TRANSFORM")
                 const regex = ASN1_TYPES[this.tag].transform.regex;
-                console.log(typeof regex)
-                console.log(regex, this.content, regex.test(this.content), typeof this.content)
                 if (regex.test(this.content)) {
                     this.content = ASN1_TYPES[this.tag].transform.converter(this.content);
                     return true;
@@ -317,7 +314,7 @@ export default {
                     field: "length"
                 })
             }
-            if (this.node.content[1] != this.content) {
+            if (this.node.content[2] != this.content) {
                 this.$store.commit("nodeUpdated", {
                     tab: this.$store.state.currentTab,
                     id: this.node.id,

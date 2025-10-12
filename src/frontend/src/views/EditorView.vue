@@ -83,7 +83,7 @@
     </v-overlay>
 
     <v-container fluid>
-        <v-row v-if="tree.length > 0">
+        <v-row v-if="tabs.length > 0">
             <v-col cols="12" sm="auto">
                 <v-btn @click="this.load = true" color="primary" :block="isMobile">
                     IMPORT
@@ -100,13 +100,13 @@
                     RUN TEST CASE WITH CURE
                 </v-btn>
             </v-col>
-            <v-col cols="12" sm="auto">
-                <v-btn color="primary" @click="showReports = true" :block="isMobile">
+            <v-col v-if="reports.length > 0" cols="12" sm="auto">
+                <v-btn  color="primary" @click="showReports = true" :block="isMobile">
                     SHOW REPORTS
                 </v-btn>
             </v-col>
-            <v-col cols="12" sm="auto" v-if="tree.length > 0">
-                <v-btn v-if="!isMobile" color="primary" @click="$store.dispatch('setAll', !$store.getters.anyExpanded)">
+            <v-col v-if="!isMobile && tree.length > 0" cols="12" sm="auto">
+                <v-btn  color="primary" @click="$store.dispatch('setAll', !$store.getters.anyExpanded)">
                     {{ $store.getters.anyExpanded ? "COLLAPSE ALL" : "EXPAND ALL" }}
                 </v-btn>
             </v-col>
@@ -126,7 +126,7 @@
             </v-col>                
         </v-row>
 
-        <v-row v-if="tree.length > 0" id="tab-content">
+        <v-row v-if="tabs.length > 0" id="tab-content">
             <v-col id="tabs" cols="12" md="2">
                 <v-tabs 
                     v-model="currentTab"
@@ -375,10 +375,10 @@ export default {
             if (type == "node") {
                 this.$store.commit("nodeCopied", this.activeNode)
             } else if (type == "hex") {
-                let array = Array.prototype.concat(this.activeNode.tag[2], this.activeNode.length[2], this.activeNode.content[2])
+                let array = Array.prototype.concat(this.activeNode.tag[2], this.activeNode.length[2], this.activeNode.content[3])
                 navigator.clipboard.writeText(array.map(this.dec2hex).join(' '));
             } else if (type == "base64") {
-                let array = Array.prototype.concat(this.activeNode.tag[2], this.activeNode.length[2], this.activeNode.content[2])
+                let array = Array.prototype.concat(this.activeNode.tag[2], this.activeNode.length[2], this.activeNode.content[3])
                 const base64String = this.uint8ToBase64(array);
                 navigator.clipboard.writeText(base64String);
             } else if (type == "content") {
@@ -476,10 +476,8 @@ export default {
             // Key handlers to allow undo and redo using ctrl + z and ctrl + y
             if (event.ctrlKey && event.key === 'z') {
                 this.$store.dispatch('undo')
-                console.log(this.$store.getters.currentTabObj.mutations)
             }
             if (event.ctrlKey && event.key === 'y') {
-                console.log(this.$store.getters.currentTabObj.mutations)
                 this.$store.dispatch('redo')
             }
         },

@@ -28,7 +28,7 @@
             v-if="node.content"
         >
             <span
-                v-for="(byte, i) in node.content[2]" :key="i"
+                v-for="(byte, i) in node.content[3]" :key="i"
                 class="content pa-1"
             >
                 {{ dec2hex(byte) }}
