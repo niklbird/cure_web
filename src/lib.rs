@@ -3,7 +3,7 @@ use cure_pp::{cure_object::CureObject, cure_repo::{self, new_repo}, repository_u
 use regex::Regex;
 use tar::Builder;
 use wasm_bindgen::prelude::*;
-use cure_asn1::{rpki::ObjectType, tree_parser::Tree};
+use cure_asn1::{rpki::ObjectType, tree_parser::{Tree, Types}};
 use std::io::Cursor;
 
 use flate2::write::GzEncoder;
@@ -13,9 +13,9 @@ use flate2::Compression;
 pub struct Node{
     pub id: usize,
     pub label: String, 
-    pub tag: (u8, String, Vec<u8>), // Value, Display Value, Binary Value
+    pub tag: (u8, String, Vec<u8>), // Value, Display Value, Human Readablbe, Binary Value
     pub length: (usize, String, Vec<u8>), 
-    pub content: (String, String, Vec<u8>),  // 
+    pub content: (String, String, String, Vec<u8>),  // 
     pub children: Vec<usize>,
     pub parent: usize,
 }
@@ -56,6 +56,13 @@ fn is_hex(s: &str) -> bool {
 fn is_base64(s: &str) -> bool {
     let base64_regex = Regex::new(r"^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$").unwrap();
     base64_regex.is_match(s)
+}
+
+fn is_pem(s: &str) -> bool{
+    if s.starts_with("---") && s.ends_with("---"){
+        return true;
+    }
+    false
 }
 
 fn create_tar_gz_in_memory(files: Vec<(String, Vec<u8>)>) -> std::io::Result<Vec<u8>> {
@@ -143,6 +150,18 @@ impl State{
         if data.starts_with("0x"){
             data = data[2..].to_string();
         }
+
+        if is_pem(&data){
+            let s = data.split("\n").collect::<Vec<&str>>();
+            if s.len() < 3{
+                return Err("Invalid data, looked like PEM but isnt".to_string());
+            }
+
+            // Remove first and last line to get rid of PEM Header / Footer
+            let s = &s[1..s.len() -1];
+            data = s.join("\n");
+        }
+
 
         if is_hex(&data) == false && is_base64(&data) == false{
             return Err("Invalid data".to_string());
@@ -289,7 +308,7 @@ impl State{
     }
 
     #[wasm_bindgen]
-    pub fn add_node(&mut self, typ: u8, value: String, parent: usize, label: String) -> Result<(), String>{
+    pub fn add_node(&mut self, typ: u8, value: String, parent: usize, label: String, child_position: Option<usize>) -> Result<(), String>{
         if self.tree.tokens.get(&parent).is_none(){
             return Err("Invalid parent".to_string());
         }
@@ -303,7 +322,7 @@ impl State{
             Some(label)
         };
 
-        self.tree.add_node(typ, val, parent, label);
+        self.tree.add_node(typ, val, parent, label, child_position);
         Ok(())
     }
 
@@ -311,6 +330,27 @@ impl State{
     pub fn adapt_node_content(&mut self, id: usize, new_content: String) -> Result<(), String>{
         let val = val_to_bytes(self.tree.tokens[&id].tag_u, new_content.clone())?;
         self.tree.tokens.get_mut(&id).unwrap().data = val;
+        self.tree.tokens.get_mut(&id).unwrap().manipulated = true;
+        self.tree.tokens.get_mut(&id).unwrap().tainted = true;
+        self.tree.taint_parents(id);
+        self.tree.fix_sizes(true);
+
+        Ok(())
+    }
+
+
+    #[wasm_bindgen]
+    pub fn adapt_node_all(&mut self, id: usize, new_tag: u8, new_length: Option<usize>, new_content: String) -> Result<(), String>{
+        let val = val_to_bytes(new_tag, new_content.clone())?;
+        self.tree.tokens.get_mut(&id).unwrap().data = val;
+        self.tree.tokens.get_mut(&id).unwrap().tag = Types::from_type_id(new_tag);
+        self.tree.tokens.get_mut(&id).unwrap().visual_tag = vec![new_tag];
+
+        if new_length.is_some(){
+            self.tree.tokens.get_mut(&id).unwrap().visual_length = new_length.unwrap();
+        }
+
+
         self.tree.tokens.get_mut(&id).unwrap().manipulated = true;
         self.tree.tokens.get_mut(&id).unwrap().tainted = true;
         self.tree.taint_parents(id);
@@ -378,6 +418,11 @@ impl State{
 fn val_to_bytes(typ: u8, value: String) -> Result<Vec<u8>, String>{
     if value == "".to_string(){
         return Ok(vec![]);
+    }
+
+    if value.starts_with("0x") {
+        return hex::decode(value).map_err(|_| "Hex Decode Error".to_string());
+
     }
     
     match typ{
@@ -472,7 +517,7 @@ fn val_to_bytes(typ: u8, value: String) -> Result<Vec<u8>, String>{
             return Ok(val);
 
         }
-        0x0E | 0x2E => { // TIME
+        0x0E => { // TIME
             let parsed = chrono::DateTime::parse_from_rfc3339(&value)
             .map_err(|_| "Invalid ISO 8601 format. Example: 2025-02-12T14:30:00Z".to_string())?;
     
@@ -480,7 +525,7 @@ fn val_to_bytes(typ: u8, value: String) -> Result<Vec<u8>, String>{
             return Ok(generalized_time_string.as_bytes().to_vec());
 
         }
-        0x17 | 0x37 => { // UTC Time
+        0x17  => { // UTC Time
             // 2025-02-10 11:21:43
             let parsed = chrono::DateTime::parse_from_str(&value, "%Y-%m-%d %H:%M:%S");
             if parsed.is_err(){
@@ -489,7 +534,7 @@ fn val_to_bytes(typ: u8, value: String) -> Result<Vec<u8>, String>{
             let generalized_time_string = parsed.unwrap().to_utc().format("%Y%m%d%H%M%SZ").to_string();
             return Ok(generalized_time_string.as_bytes().to_vec());
         }
-        0x18 | 0x38 => { // GeneralizedTime
+        0x18  => { // GeneralizedTime
             let parsed = chrono::DateTime::parse_from_str(&value, "%Y-%m-%d %H:%M:%S");
             if parsed.is_err(){
                 return Err("Invalid date format. Required Format: %Y-%m-%d %H:%M:%S (E.g. 2025-01-30 11:21:43)".to_string());
@@ -506,20 +551,20 @@ fn val_to_bytes(typ: u8, value: String) -> Result<Vec<u8>, String>{
         0x11 | 0x31 => { // Set
             return Ok(vec![]);
         }
-        0x1F | 0x3F => { // Date
+        0x1F  => { // Date
             let new_s = value.replace("-", "");
             return Ok(new_s.as_bytes().to_vec());
         }
-        0x20 | 0x40 => { // Time of day
+        0x20  => { // Time of day
             let new_s = value.replace(":", "");
 
             return Ok(new_s.as_bytes().to_vec());
         }
-        0x21 | 0x41 => { // Date-Time
+        0x21  => { // Date-Time
             let new_s = value.replace("-", "").replace(":", "");
             return Ok(new_s.as_bytes().to_vec());
         }
-        0x22 | 0x42 => { // Duration
+        0x22  => { // Duration
             return encode_duration_iso8601(&value);
         }
         _ => { // Dont support external or embedded pdv 
