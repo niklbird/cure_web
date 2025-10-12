@@ -13,9 +13,7 @@
                 <v-card-text>
                     <v-row>
                         <v-col cols="12" md="auto">
-                            <v-date-picker
-                                v-model="date"
-                            ></v-date-picker>
+                            <v-date-picker v-model="date"></v-date-picker>
                         </v-col>
                         <v-col cols="12" md="auto">
                             <v-time-picker
@@ -34,93 +32,93 @@
                     >
                         Confirm
                     </v-btn>
-                    <v-btn
-                        @click="pick = false"
-                        variant="tonal"
-                    >
+                    <v-btn @click="pick = false" variant="tonal">
                         Cancel
                     </v-btn>
                 </v-card-actions>
             </v-card>
         </v-overlay>
 
-        <v-card-title class="text-center flex-shrink-0">
+        <v-card-title class="text-center flex-0">
             {{ node ? 'Edit Node' : 'Add Node' }}
         </v-card-title>
         
-        <v-card-text class="flex-grow-1 overflow-y-auto">
-            <v-row>
+        <v-divider></v-divider>
+
+        <v-card-text class="flex-grow-1" style="overflow-y: auto;">
+            <v-form
+                @keydown.enter.prevent="console.log('Enter hit'); node ? changeNode() : addNode()"
+            >
                 <v-select
                     v-model="tag"
                     label="ASN.1 TYPE"
-                    :items="Object.entries(types).map(([key, value]) => ({
-                        title: value.name,
-                        value: key
-                    }))"
+                    :items="asn1TypesForSelect"
+                    item-title="title"
+                    item-value="value"
                     density="compact"
                 ></v-select>
-            </v-row>
-            <v-row>
+
                 <v-text-field
                     v-model="label"
                     label="Label"
                     placeholder="Label"
                     density="compact"
                 ></v-text-field>
-            </v-row>
-            <v-row>
+
                 <v-text-field
+                    v-if="node != null"
                     v-model="length"
                     label="Length"
                     placeholder="Length"
                     density="compact"
-                ></v-text-field> 
-            </v-row>
-            <v-row v-if="tag != null">
-                <v-col cols="10">
-                    <v-text-field
-                        v-if="types[tag]['completions'].length == 0"
-                        v-model="content"
-                        label="Content" 
-                        :placeholder="types[tag]['example']"
-                        density="compact"
-                    ></v-text-field>
-                    <AutoComplete
-                        v-else
-                        v-model="content"
-                        label="Content"
-                        :completions="types[tag]['completions']"
-                    ></AutoComplete>
-                </v-col>
-                <v-col cols="2" class="d-flex align-center">
-                    <v-btn
-                        v-if="timeTypes.includes(types[tag]['name'])"
-                        icon
-                        @click="pick = true"
-                        variant="text"
-                        size="small"
-                    >
-                        <v-icon icon="mdi-calendar"></v-icon>
-                    </v-btn>
-                    <v-btn icon variant="text" size="small">
-                        <v-icon icon="mdi-help-circle"></v-icon>
-                        <v-tooltip activator="parent" location="bottom">
-                            <span
-                                v-for="(chunk, index) in types[tag]['description'].split('\n')"
-                                :key="index"
-                            >
-                                {{ chunk }}
-                                <br>
-                            </span>
-                        </v-tooltip>
-                    </v-btn>
-                </v-col>
-            </v-row>
+                ></v-text-field>
+                
+                <v-row v-if="tag != null && tag != 48 && tag != 49" class="align-center">
+                    <v-col>
+                        <v-text-field
+                            v-if="types[tag]['completions'].length == 0"
+                            v-model="content"
+                            label="Content"
+                            :placeholder="types[tag]['example']"
+                            density="compact"
+                            hide-details
+                        ></v-text-field>
+                        <AutoComplete
+                            v-else
+                            v-model="content"
+                            label="Content"
+                            :completions="types[tag]['completions']"
+                        ></AutoComplete>
+                    </v-col>
+                    <v-col cols="auto" class="d-flex">
+                        <v-btn
+                            v-if="timeTypes.includes(types[tag]['name'])"
+                            icon="mdi-calendar"
+                            @click="pick = true"
+                            variant="text"
+                            size="small"
+                        ></v-btn>
+                        
+                        <v-btn icon variant="text" size="small">
+                            <v-icon>mdi-help-circle</v-icon>
+                            <v-tooltip activator="parent" location="bottom">
+                                <span
+                                    v-for="(chunk, index) in types[tag]['description'].split('\n')"
+                                    :key="index"
+                                >
+                                    {{ chunk }}
+                                    <br>
+                                </span>
+                            </v-tooltip>
+                        </v-btn>
+                    </v-col>
+                </v-row>
+            </v-form>
         </v-card-text>
         
         <v-divider></v-divider>
 
-        <v-card-actions class="pa-4 flex-shrink-0">
+        <v-card-actions class="pa-4 flex-0">
             <v-spacer></v-spacer>
             <v-btn
                 v-if="!node"
@@ -152,10 +150,9 @@
 import moment from "moment";
 import { ASN1_TYPES, TIME_TYPES } from '@/utils/types';
 import AutoComplete from '@/components/AutoComplete.vue';
-import { useDisplay } from 'vuetify'; // NEW: Import useDisplay
+import { useDisplay } from 'vuetify';
 
 export default {
-    // NEW: Add setup function to use composables
     setup() {
         const { mobile } = useDisplay();
         return { isMobile: mobile };
@@ -187,6 +184,15 @@ export default {
             time: new Date().toLocaleTimeString('en-GB')
         };
     },
+    // IMPROVEMENT: Moved the items logic to a computed property
+    computed: {
+        asn1TypesForSelect() {
+            return Object.entries(this.types).map(([key, value]) => ({
+                title: value.name,
+                value: key
+            }));
+        }
+    },
     methods: {
         translate(value) {
             let bytes;
@@ -212,10 +218,11 @@ export default {
             this.date.setHours(...this.time.split(':'));
             const moment_obj = moment(this.date);
             const type = ASN1_TYPES[this.tag].name;
+            console.log(type)
             if (type == "TIME-OF-DAY") {
                 this.content = moment_obj.format('HH:mm:ss');
             } else if (type == "TIME") {
-                console.log("TIME")
+                this.content = moment_obj.format('YYYY-MM-DDTHH:mm:ss');
             } else if (type == "DATE") {
                 this.content = moment_obj.format('YYYY-MM-DD');
             } else if (type == "DATE-TIME") {
@@ -224,6 +231,31 @@ export default {
                 this.content = moment_obj.format('YYYYMMDDHHmmss');
             } else if (type == "UTCTime") {
                 this.content = moment_obj.format('YYMMDDHHmmssZ');
+            } else if (type == "DURATION") {
+                const years = moment_obj.years();
+                const months = moment_obj.months();
+                const days = moment_obj.days();
+                const hours = moment_obj.hours();
+                const minutes = moment_obj.minutes();
+                const seconds = moment_obj.seconds();
+
+                let result = 'P';
+                if (years) result += `${years}Y`;
+                if (months) result += `${months}M`;
+                if (days) result += `${days}D`;
+
+                // time portion
+                if (hours || minutes || seconds) {
+                    result += 'T';
+                    if (hours) result += `${hours}H`;
+                    if (minutes) result += `${minutes}M`;
+                    if (seconds) result += `${seconds}S`;
+                }
+
+                // special case: 0 duration
+                if (result === 'P') result = 'PT0S';
+
+                this.content = result
             }
             this.pick = false;
         },
@@ -231,6 +263,16 @@ export default {
             if (this.content === "" || this.content === null) return true;
             if (this.tag === null) return false;
             if (ASN1_TYPES[this.tag].rules(this.content)) return true;
+            if (ASN1_TYPES[this.tag].transform) {
+                console.log("HAS TRANSFORM")
+                const regex = ASN1_TYPES[this.tag].transform.regex;
+                console.log(typeof regex)
+                console.log(regex, this.content, regex.test(this.content), typeof this.content)
+                if (regex.test(this.content)) {
+                    this.content = ASN1_TYPES[this.tag].transform.converter(this.content);
+                    return true;
+                }
+            }
             if (!confirm("The content is not valid for the selected type. Do you still want to continue?")) {
                 return false;
             } else {
@@ -245,8 +287,9 @@ export default {
                 parent: this.parent,
                 tag: this.tag,
                 label: this.label,
-                content: this.content
+                content: this.content ? this.content : ""
             });
+            this.$emit('close');
         },
         changeNode() {
             if (!this.verifyContent()) return
@@ -270,8 +313,8 @@ export default {
                 this.$store.commit("nodeUpdated", {
                     tab: this.$store.state.currentTab,
                     id: this.node.id,
-                    value: this.length,
-                    field: "field"
+                    value: this.length ? this.length : "",
+                    field: "length"
                 })
             }
             if (this.node.content[1] != this.content) {

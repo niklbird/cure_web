@@ -33,65 +33,116 @@
                 </v-card>
         </v-dialog>        
         <!-- Drop zone with handlers for paste, drag and drop and clicks -->
-        <div
-            style="background-color: white; border-radius: 8px;"
-            class="drop-zone"
-            :class="{ 'hovered': dragOver }"  
-            @dragover.prevent="dragOver = true"
-            @dragleave.prevent="dragOver = false"
-            @drop.prevent="handleDrop"
-            @click="triggerFileInput"
-            @paste="handlePaste"
-        >
-            <v-col>
-                <v-row>
-                    <span>
-                        Paste base64 content below, drag & drop files here or click to browse
-                        <div v-if="file">
-                            <span 
-                                class="mt-4"
-                                style="vertical-align:middle"
-                            >
-                                {{ file.name }}
-                            </span>
-                        </div>
-                    </span>                      
-                </v-row>
-                <v-row>
-                    <v-textarea @click.stop></v-textarea>
-                </v-row>
-            </v-col>            
-            <!-- File input is hidden but triggered when clicking anywhere in the dropzone -->
-            <input type="file" ref="fileInput" style="display: none" @change="handleFileSelect" />
-        </div>
+        <v-card>
+            <v-card-text
+                style="background-color: white; border-radius: 8px;"
+                class="drop-zone"
+                :class="{ 'hovered': dragOver }"  
+                @dragover.prevent="dragOver = true"
+                @dragleave.prevent="dragOver = false"
+                @drop.prevent="handleDrop"
+                @click="triggerFileInput"
+                @paste="handlePaste"
+            >
+                <v-col>
+                    <v-row>
+                        <span>
+                            Paste base64 content below, drag & drop files here or click to browse
+                            <div v-if="file">
+                                <span 
+                                    class="mt-4"
+                                    style="vertical-align:middle"
+                                >
+                                    {{ file.name }}
+                                </span>
+                            </div>
+                        </span>                      
+                    </v-row>
+                    <v-row>
+                        <v-textarea @click.stop></v-textarea>
+                    </v-row>
+                </v-col>            
+                <!-- File input is hidden but triggered when clicking anywhere in the dropzone -->
+                <input type="file" ref="fileInput" style="display: none" @change="handleFileSelect" />
+            </v-card-text>
+            <v-card-actions>
+                <v-spacer></v-spacer>
+                <v-btn
+                    color="primary"
+                >
+                    Load Example
+                    <MenuComponent :items="example_items" />
+                </v-btn>
+            </v-card-actions>
+        </v-card>
     </v-container>    
 </template>
 
 <script>
+import MenuComponent from "@/components/MenuComponent.vue";
+
 export default {
     data() {
         return {
             data: null,
             file: null,
             dragOver: false,
-            dialog: false
+            dialog: false,
+            example_items: [
+                {
+                    "title": "ROA",
+                    "action": () => this.loadExample("roa")
+                },
+                {
+                    "title": "MFT",
+                    "action": () => this.loadExample("mft")
+                },
+                {
+                    "title": "CRL",
+                    "action": () => this.loadExample("crl")
+                },
+                {
+                    "title": "CER",
+                    "action": () => this.loadExample("cer")
+                },
+                {
+                    "title": "ASA",
+                    "action": () => this.loadExample("asa")
+                },
+                {
+                    "title": "GBR",
+                    "action": () => this.loadExample("gbr")
+                }
+            ]
         };
     },
     emits: ["upload"],
+    components: {
+        MenuComponent
+    },
     methods: {
+        loadExample(type) {
+            this.$store.dispatch("addTab", type + "_example")
+            this.$store.commit("stateSet", {
+                tab: this.$store.getters.currentTab,
+                type: "example",
+                data: type
+            })
+            this.$emit("upload");
+        },
         open(newTab) {
             this.dialog = false;
             const type = this.file.name.endsWith(".json") ? "json" : "hex";
 
             if (newTab) {
-                this.$store.commit("tabAdded", this.file.name || "Unnamed");
+                this.$store.dispatch("addTab", this.file.name || "Unnamed");
             } else {
                 // If opening in the current tab, you might want to rename it.
                 // this.$store.commit("tabRenamed", { tabId: this.$store.state.currentTab, newName: this.file.name || "Unnamed" });
             }
 
             this.$store.commit("stateSet", {
-                tab: this.$store.state.currentTab,
+                tab: this.$store.getters.currentTab,
                 data: this.data,
                 type: type
             });
@@ -168,7 +219,6 @@ export default {
                 }
             }
         },
-        
         async handlePaste(event) {
             if (!event.clipboardData) return;
 

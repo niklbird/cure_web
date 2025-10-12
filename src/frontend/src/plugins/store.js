@@ -10,58 +10,88 @@ import { createStore } from 'vuex'
 import { State } from "@/rust/cure_web"
 
 
-function updateCommitHistory(state, count, mutation) {
+function updateCommitHistory(state, count, mutation, push=true) {
     // Add a new mutation to the history of mutations for the current tab.
-    state.tabs[mutation[1].tab].mutations.splice(count, 0, mutation)
-    state.tabs[mutation[1].tab].count += 1
+    const tab = state.tabs.find(tab => tab.id == mutation[1].tab)
+    if (push) {
+        // If we are adding a new mutation, remove all mutations after the current count
+        tab.mutations = tab.mutations.slice(0, count)
+        tab.mutations.push(mutation)
+    }
+    tab.count += 1
+}
+
+
+// The inital state of a new tab:
+// [id] is the id of the state used to identify it when switching or deleting tabs
+// [name] is the name of the tab, it can be changed later in the UI
+// [state] is the State object returned by the rust backen
+// [tree] is the list of nodes from the State object
+// [positions] stores the position of each byte node to support the auto-scrolling functionality
+// [expanded] for each node store whether it is expanded or not
+// [highlighted] is the id of the currently highlighted node, -1 if none
+// [dragTarget] is the id of the node that is currently being dragged over, -1 if none
+// [copiedNode], the UI allows to copy a node which is then stored here
+// [mutations] is a list of all mutations modifying the rust State object, 
+// this is used to implement the undo/redo functionality
+// [count] is the number of mutations, it is used to implement the undo/redo functionality
+const defaultTab = {
+    id: "",
+    name: "",
+    state: null,
+    tree: [],
+    positions: {},
+    expanded: {},
+    highlighted: -1,
+    target: [-1, -1],
+    isDragging: false,
+    activeDropContextId: null,
+    draggedNodeId: null,
+    copiedNode: null,
+    mutations: [],
+    count: 0
 }
 
 
 export default createStore({
-    // Set initial state, we have an object of tabs, and the currently selected tab.
-    // -1 means no tab is selected
     state: {
-        tabs: {},
-        currentTab: -1 
+        tabs: [],
+        currentTab: null,
+        copiedNode: null
     },
-    // Getters as described above.
     getters: {
-        getNodeFromId: (state) => (id) => {
-            let candidates = state.tabs[state.currentTab].tree.filter((node) => node.id == id)
-
-            if (candidates.length > 0) {
-                return candidates[0]
-            } else {
-                return {
-                    children: []
-                }
-            }  
-        },
-        positions: (state) => {
-            // Check if a tab is selected, if not return an empty object
-            return state.currentTab > -1 ? state.tabs[state.currentTab].positions : {}
+        getNodeFromId: (state, getters) => (id) => {
+            return getters.currentTabObj.tree.find((node) => node.id == id) || { children: []}
         },
         tabs: (state) => {
-            // Return a list of all tab objects
-            return Object.values(state.tabs)
+            return state.tabs
         },
-        name: (state) => {
-            return state.currentTab > -1 ? state.tabs[state.currentTab].name : null
+        currentTab: (state) => {
+            return state.currentTab
         },
-        state: (state) => {
-            return state.currentTab > -1 ? state.tabs[state.currentTab].state : null
+        currentTabObj: (state) => {
+            return state.tabs.find(tab => tab.id == state.currentTab) || defaultTab
         },
-        tree: (state) => {
-            return state.currentTab > -1 ? state.tabs[state.currentTab].tree : []
+        name: (state, getters) => {
+            return getters.currentTabObj.name
         },
-        highlighted: (state) => {
-            return state.currentTab > -1 ? state.tabs[state.currentTab].highlighted : -1
+        state: (state, getters) => {
+            return getters.currentTabObj.state
         },
-        isExpanded: (state) => (id) => {
-            return state.currentTab > -1 ? state.tabs[state.currentTab].expanded[id] ?? false : false
+        tree: (state, getters) => {
+            return getters.currentTabObj.tree
         },
-        isDragOver: (state) => (id, index) => {
-            const dropTarget = state.currentTab > -1 ? state.tabs[state.currentTab].dragTarget : [-1, -1]
+        positions: (state, getters) => {
+            return getters.currentTabObj.positions
+        },
+        highlighted: (state, getters) => {
+            return getters.currentTabObj.highlighted
+        },
+        isExpanded: (state, getters) => (id) => {
+            return getters.currentTabObj.expanded[id] ?? false
+        },
+        isDragOver: (state, getters) => (id, index) => {
+            const dropTarget = getters.target
 
             // Drop Target is a list with two indices:
             // the first is the id of the node that is being dragged over,
@@ -69,21 +99,17 @@ export default createStore({
             // so that elements can be dropped at a specific position.
             return (dropTarget[0] == id) && (dropTarget[1] == index)
         },
-        target: (state) => {
-            return state.currentTab < 0 ? [-1, -1] : state.tabs[state.currentTab].target
+        target: (state, getters) => {
+            return getters.currentTabObj.target
         },
-        draggedNodeId: (state) => {
-            return state.currentTab > -1 ? state.tabs[state.currentTab].draggedNodeId : null
+        draggedNodeId: (state, getters) => {
+            return getters.currentTabObj.draggedNodeId
         },
-        anyExpanded: (state) => {
-            if (state.currentTab < 0) {
-                return false
-            }
-
-            return Object.values(state.tabs[state.currentTab].expanded).some((value) => value)
+        anyExpanded: (state, getters) => {
+            return Object.values(getters.currentTabObj.expanded).some((value) => value)
         },
-        isDragging: (state) => {
-            return state.currentTab > -1 ? state.tabs[state.currentTab].isDragging : false
+        isDragging: (state, getters) => {
+            return getters.currentTabObj.isDragging
         },
         isDescendant: (state, getters) => (ancestorId, potentialDescendantId) => {
             const ancestorNode = getters.getNodeFromId(ancestorId);
@@ -105,8 +131,8 @@ export default createStore({
             }
             return false;
         },
-        activeDropContextId: (state) => {
-            return state.currentTab > -1 ? state.tabs[state.currentTab].activeDropContextId : null
+        activeDropContextId: (state, getters) => {
+            return getters.currentTabObj.activeDropContextId
         },
         getParentId: (state, getters) => (childId) => {
             const node = getters.getNodeFromId(childId);
@@ -114,29 +140,16 @@ export default createStore({
         }
     },
     mutations: {
-        emptyState: function (state, tab) {
-            state.tabs[tab].state = null
-            state.tabs[tab].tree = null
-            state.tabs[tab].mutations = []
+        emptyState: function (state, id) {
+            const tab = state.tabs.find((tab) => tab.id == id)
+            tab.state = null
+            tab.tree = null
+            tab.mutations = []
         },
-        tabAdded: function (state, name) {
-            const id = Object.keys(state.tabs).length == 0 ? 0 : Math.random()
-            // The inital state of a new tab:
-            // [id] is the id of the state used to identify it when switching or deleting tabs
-            // [name] is the name of the tab, it can be changed later in the UI
-            // [state] is the State object returned by the rust backen
-            // [tree] is the list of nodes from the State object
-            // [positions] stores the position of each byte node to support the auto-scrolling functionality
-            // [expanded] for each node store whether it is expanded or not
-            // [highlighted] is the id of the currently highlighted node, -1 if none
-            // [dragTarget] is the id of the node that is currently being dragged over, -1 if none
-            // [copiedNode], the UI allows to copy a node which is then stored here
-            // [mutations] is a list of all mutations modifying the rust State object, 
-            // this is used to implement the undo/redo functionality
-            // [count] is the number of mutations, it is used to implement the undo/redo functionality
-            state.tabs[id] = {
-                id: id,
-                name: name,
+        tabAdded: function (state, context) {
+            state.tabs.push({
+                id: context.id,
+                name: context.name,
                 state: null,
                 tree: [],
                 positions: {},
@@ -149,22 +162,27 @@ export default createStore({
                 copiedNode: null,
                 mutations: [],
                 count: 0
-            }
-
-            state.currentTab = id
+            })
         },
         tabRenamed: function (state, name) {
-            state.tabs[state.currentTab].name = name
+            state.tabs.find((tab) => tab.id == state.currentTab).name = name
         },
         tabRemoved: function (state, id) {
-            // If the currently selected tab is removed, select another one if possible.
-            if ((state.currentTab == id) && state.tabs.length > 1) {
-                state.currentTab = Object.keys(state.tabs).filter((key) => key != id)[0]
-            } else if (state.currentTab == id) {
-                state.currentTab = -1
-            }
+            const index = state.tabs.findIndex(tab => tab.id === id);
+            if (index === -1) return; // Tab not found
 
-            delete state.tabs[id]
+            state.tabs.splice(index, 1);
+            // If the removed tab was the active one, select a new tab
+            if (state.currentTab === id) {
+                // If tabs still remain, select a new one
+                if (state.tabs.length > 0) {
+                    // Select the previous tab, or the first tab if the deleted one was the first
+                    const newIndex = Math.max(0, index - 1);
+                    state.currentTab = state.tabs[newIndex].id;
+                } else {
+                    state.currentTab = null;
+                }
+            }
         },
         tabSelected: function (state, id) {
             state.currentTab = id
@@ -173,113 +191,127 @@ export default createStore({
             state.copiedNode = context
         },
         dragTargetSet: function (state, id) {
-            state.tabs[state.currentTab].target = id
+            state.tabs.find(tab => tab.id == state.currentTab).target = id
         },
         draggedNodeIdSet: function (state, id) {
-            state.tabs[state.currentTab].draggedNodeId = id
+            state.tabs.find(tab => tab.id == state.currentTab).draggedNodeId = id
         },
         draggingSet: function (state, isDragging) {
-            state.tabs[state.currentTab].isDragging = isDragging
+            state.tabs.find(tab => tab.id == state.currentTab).isDragging = isDragging
         },
         activeDropContextSet: function (state, id) {
-            state.tabs[state.currentTab].activeDropContextId = id
+            state.tabs.find(tab => tab.id == state.currentTab).activeDropContextId = id
         },
         elementHighlighted: function (state, id) {
-            state.tabs[state.currentTab].highlighted = id
+            state.tabs.find(tab => tab.id == state.currentTab).highlighted = id
         },
         mutationsAppended: function (state, context) {
             // Append a mutation to the history of mutations for the current tab.
             // The mutation is an array with the first element being the name of the mutation
             // and the second element being the context data.
-            state.tabs[state.currentTab].mutations.push(...context)
+            state.tabs.find(tab => tab.id == state.currentTab).mutations.push(...context)
         },
         mutationHistoryCounterSet: function (state, context) {
-            state.tabs[state.currentTab].count = context.count
+            state.tabs.find(tab => tab.id == state.currentTab).count = context.count
         },
         stateSet: function (state, context) {
             // For each action that changes the rust State object, we update the commit history.
             // To allow it to be undone
-            updateCommitHistory(state, state.tabs[context.tab].count, ["stateSet", context])
-
+            const tab = state.tabs.find(tab => tab.id == context.tab)
+            updateCommitHistory(state, tab.count, ["stateSet", context], context.push ?? true)
+            
             // Depending on the type of the context data, create a new State object
             // We can load from json or hex, or load an example.
             if (context.type == "json") {
-                state.tabs[context.tab].state = State.from_stored(context.data)
+                tab.state = State.from_stored(context.data)
             } else if (context.type == "example") {
-                state.tabs[context.tab].state = State.load_example(context.data)
+                tab.state = State.load_example(context.data)
             } else {
                 // Load from hex string
-                state.tabs[context.tab].state = new State(context.data)
+                tab.state = new State(context.data)
             }
             
-            state.tabs[context.tab].tree = JSON.parse(state.tabs[context.tab].state.get_nodes())
+            tab.tree = JSON.parse(tab.state.get_nodes())
         },
         nodeAdded: function (state, context) {
-            updateCommitHistory(state, state.tabs[context.tab].count, ["nodeAdded", context])
+            const tab = state.tabs.find(tab => tab.id == context.tab)
+            updateCommitHistory(state, tab.count, ["nodeAdded", context], context.push ?? true)
 
-            state.tabs[context.tab].state.add_node(
+            tab.state.add_node(
                 context.tag, context.content, context.parent, context.label
             )
-            state.tabs[context.tab].tree = JSON.parse(state.tabs[context.tab].state.get_nodes())
+            tab.tree = JSON.parse(tab.state.get_nodes())
         },
         positionAdded: function (state, context) {
-            state.tabs[state.currentTab].positions[context.id] = [context.top, context.height]
+            state.tabs.find(tab => tab.id == state.currentTab).positions[context.id] = [context.top, context.height]
         },
         expandedSet: function (state, context) {
-            state.tabs[state.currentTab].expanded[context.id] = context.expanded
+            state.tabs.find(tab => tab.id == state.currentTab).expanded[context.id] = context.expanded
         },
         nodeMoved: function (state, context) {
-            updateCommitHistory(state, state.tabs[context.tab].count, ["nodeMoved", context])
+            const tab = state.tabs.find(tab => tab.id == context.tab)
+            updateCommitHistory(state, tab.count, ["nodeMoved", context], context.push ?? true)
 
-            state.tabs[context.tab].state.drag_node(context.id, context.target, context.index)
-            state.tabs[context.tab].tree = JSON.parse(state.tabs[context.tab].state.get_nodes())
+            tab.state.drag_node(context.id, context.target, context.index)
+            tab.tree = JSON.parse(tab.state.get_nodes())
         },
         nodeUpdated: function (state, context) {
-            updateCommitHistory(state, state.tabs[context.tab].count, ["nodeUpdated", context])
+            const tab = state.tabs.find(tab => tab.id == context.tab)
+            updateCommitHistory(state, tab.count, ["nodeUpdated", context], context.push ?? true)
 
             // Each part of a node can be changed, field is the name of the field that is changed
             switch (context.field) {
                 case "content":
-                    state.tabs[context.tab].state.adapt_node_content(context.id, context.value)
+                    tab.state.adapt_node_content(context.id, context.value)
                     break
                 case "length":
-                    state.tabs[context.tab].state.adapt_node_length(context.id, context.value)
+                    tab.state.adapt_node_length(context.id, context.value)
                     break
                 case "tag":
-                    state.tabs[context.tab].state.adapt_node_tag(context.id, context.value)
+                    tab.state.adapt_node_tag(context.id, context.value)
                     break
                 case "label":
-                    state.tabs[context.tab].state.adapt_node_label(context.id, context.value)
+                    tab.state.adapt_node_label(context.id, context.value)
                     break
                 default:
                     console.warn("Unknown field to update:", context.field)
             }
             
-            state.tabs[context.tab].tree = JSON.parse(state.tabs[context.tab].state.get_nodes())
+            tab.tree = JSON.parse(tab.state.get_nodes())
         },
         nodeRemoved: function (state, context) {
-            updateCommitHistory(state, state.tabs[context.tab].count, ["nodeRemoved", context])
+            const tab = state.tabs.find(tab => tab.id == context.tab)
+            updateCommitHistory(state, tab.count, ["nodeRemoved", context], context.push ?? true)
 
-            state.tabs[context.tab].state.remove_node(context.id)
-            state.tabs[context.tab].tree = JSON.parse(state.tabs[context.tab].state.get_nodes())
+            tab.state.remove_node(context.id)
+            tab.tree = JSON.parse(tab.state.get_nodes())
         },
     },
     actions: {
+        addTab: function (context, name) {
+            const id = Math.floor(Math.random() * 100000).toString();
+            context.commit("tabAdded", {"id": id, "name": name})
+            context.commit("tabSelected", id)
+        },
         setAll: function (context, expanded) {
-            // Expand all nodes in the current tab
             const setExpanded = (node) => {
                 context.commit("expandedSet", {id: node.id, expanded: expanded})
             }
 
-            for (let node of context.state.tabs[context.state.currentTab].tree) {
+            for (let node of context.getters.currentTabObj.tree) {
                 setExpanded(node)
             }
         },
         undo: function (context) {
             // Undo is implemented by decreasing the mutation counter by one and then applying
             // all mutations up to the counter to the empty state
-            const mutations = context.state.tabs[context.state.currentTab].mutations
-            const new_count = context.state.tabs[context.state.currentTab].count - 1
+            if (context.getters.currentTabObj.count < 2) {
+                // Nothing to undo.
+                return
+            }
+
+            const mutations = context.getters.currentTabObj.mutations
+            const new_count = context.getters.currentTabObj.count - 1
 
             context.commit("emptyState", context.state.currentTab)
 
@@ -289,13 +321,21 @@ export default createStore({
 
             // Append the undone mutations to the history of mutations so that they can be redone later
             context.commit("mutationsAppended", mutations.slice(new_count))
+            context.commit("mutationHistoryCounterSet", {count: new_count})
         },
         redo: function (context) {
             // To redo the last undone action, we take the next action from the array
-            const mutation = context.state.tabs[context.state.currentTab].mutations.splice(context.state.tabs[context.state.currentTab].count, 1)
+            if (context.getters.currentTabObj.count >= context.getters.currentTabObj.mutations.length) {
+                // Nothing to redo.
+                return
+            }
 
+            const mutation = context.getters.currentTabObj.mutations[context.getters.currentTabObj.count]
+            let context_commit = mutation[1]
+            // When redoing, we do not want to add the mutation again to the history
+            context_commit.push = false 
             // Applying the mutation will add it back to the mutations array at the given position and increase counter by one
-            context.commit(mutation[0], mutation[1])
+            context.commit(mutation[0], context_commit)
         }
     },
     modules: {}
