@@ -112,6 +112,10 @@ export default {
                 {
                     "title": "GBR",
                     "action": () => this.loadExample("gbr")
+                },
+                {
+                    "title": "TLS",
+                    "action": () => this.loadExample("tls")
                 }
             ]
         };
@@ -164,7 +168,10 @@ export default {
                     this.data = await file.text();
                 } else {
                     try {
-                        this.data = await file.text();
+                        const decoder = new TextDecoder('utf-8', { fatal: true });
+        
+                        // If this line succeeds, the file is valid UTF-8 text.
+                        this.data = decoder.decode(arrayBuffer);
                     } catch(e) {
                         // Modern way to read a file as an ArrayBuffer
                         const arrayBuffer = await file.arrayBuffer();
