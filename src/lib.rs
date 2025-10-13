@@ -8,6 +8,7 @@ use std::{fs, io::Cursor};
 
 use flate2::write::GzEncoder;
 use flate2::Compression;
+mod cert; 
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Node{
@@ -18,6 +19,7 @@ pub struct Node{
     pub content: (String, String, String, Vec<u8>),  // 
     pub children: Vec<usize>,
     pub parent: usize,
+    pub edited: bool,
 }
 
 
@@ -34,6 +36,7 @@ pub fn encode_node(tree: &Tree, node_id: usize) -> Vec<Node>{
         content,
         children: token.children.clone(),
         parent: token.parent,
+        edited: token.manipulated,
     };
 
     nodes.push(node);
@@ -293,6 +296,11 @@ impl State{
 
     #[wasm_bindgen]
     pub fn load_example(typ: &str) -> Result<State, String>{
+        if typ == "tls"{
+            let state = State::new(cert::EXAMPLE_CERT.to_string())?;
+            return Ok(state);
+        }
+
         let conf = cure_pp::repository_util::create_default_config();
         let ob_typ = ObjectType::from_string(typ);
         if ob_typ == ObjectType::UNKNOWN{
@@ -417,6 +425,11 @@ impl State{
     pub fn from_stored(encoded: String) -> Result<State, String>{
         let state: State = serde_json::from_str(&encoded).map_err(|_| "Invalid data".to_string())?;
         Ok(state)
+    }
+
+    #[wasm_bindgen]
+    pub fn infer_object_type(&self) -> String{
+        self.tree.infer_own_type()
     }
 }
 
