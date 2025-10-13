@@ -49,7 +49,7 @@
                     :simplify="simplify"
                 /> 
                 <div 
-                    v-if="showDropZones"
+                    v-if="showDropZones && (index < node.children.length - 1 || isDragOver(node.children.length))"
                     class="drop-zone"
                     :class="{ 'dragover-active': isDragOver(index + 1) }"
                     @dragover.prevent="(event) => onDragOver(event, index + 1, true)"
@@ -175,12 +175,12 @@ export default {
 
 /* New/Updated Styles for Drop Zones */
 .drop-zone {
-    height: 1px; /* Small, invisible target area */
-    transition: height 0.2s ease, background-color 0.2s ease;
+    height: 5px; /* Small, invisible target area */
+    border: 1px dashed rgba(0, 0, 0, 0.5);
 }
 
 .drop-zone.dragover-active {
-    height: 1px; /* Expands to show where the drop will occur */
+    height: 20px;
     background-color: rgba(255, 255, 0, 0.2);
     border-radius: 4px;
     margin: 2px 0;
