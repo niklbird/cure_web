@@ -62,7 +62,7 @@
                                         </v-card>
                                     </div>
 
-                                    <span :class="{crashed: rp.crashed}">Errors:</span>
+                                    <span :class="{crashed: rp.crashed}">{{ rp.crashed ? "Errors:" : "Logs:"}} </span>
                                     <br>
                                     <pre class="text-pre-wrap" :class="{'crashed-thin': rp.crashed}">
                                         {{ rp.errors }}
@@ -95,7 +95,7 @@
                     <MenuComponent :items="formats.map(format => ({ title: format.toUpperCase(), action: () => download(format) }))" />
                 </v-btn>
             </v-col>
-            <v-col cols="12" sm="auto" v-if="tree.length > 0 && reachable">
+            <v-col cols="12" sm="auto" v-if="tree.length > 0 && reachable && rpki_types.includes(object_type)">
                 <v-btn color="primary" @click="runTestCase" :block="isMobile">
                     RUN TEST CASE WITH CURE
                 </v-btn>
@@ -276,6 +276,12 @@ export default {
         MenuComponent
     },
     computed: {
+        rpki_types: function () {
+            return ["roa", "mft", "crl", "cer", "asa", "gbr"]
+        },
+        object_type: function () {
+            return this.state.infer_object_type()
+        },
         state: function () {
             return this.$store.getters.state
         },
