@@ -59,7 +59,7 @@ fn is_base64(s: &str) -> bool {
 }
 
 fn is_pem(s: &str) -> bool{
-    if s.starts_with("---") && s.ends_with("---"){
+    if s.starts_with("---"){
         return true;
     }
     false
@@ -150,26 +150,24 @@ impl State{
         if data.starts_with("0x"){
             data = data[2..].to_string();
         }
+        data = data.replace("\r", "");
 
         if is_pem(&data){
             let s = data.split("\n").collect::<Vec<&str>>();
 
-            return Err("PEM not supported yet".to_string());
             if s.len() < 3{
                 return Err("Invalid data, looked like PEM but isnt".to_string());
             }
 
             // Remove first and last line to get rid of PEM Header / Footer
             let s = &s[1..s.len() -1];
-            data = s.join("");
 
-            fs::write("./test", data.clone()).unwrap();
+            data = s.join("");
             
         }
 
-
         if is_hex(&data) == false && is_base64(&data) == false{
-            return Err("Invalid data2".to_string());
+            return Err("Invalid data, neither hex nor base64".to_string());
         }
 
         let decoded;
@@ -616,11 +614,12 @@ fn in_to_byt(inp: i64) -> Vec<u8> {
     result
 }
 
-// pub fn test(){
-//     let mut state = State::load_example("gbr").unwrap();
-//     state.get_nodes();
-//     println!("{}", state.tree.encode_b64());
-// }
+pub fn test(){
+    let content = fs::read_to_string("/home/niklas/Downloads/asn1-app.pem").unwrap();
+    let mut state = State::new(content).unwrap();
+    state.get_nodes();
+    println!("{}", state.tree.encode_b64());
+}
 
 
 pub fn encode_oid_from_string(oid_str: &str) -> Vec<u8> {
