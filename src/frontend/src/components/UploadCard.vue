@@ -163,12 +163,16 @@ export default {
                     // Modern way to read a file as text
                     this.data = await file.text();
                 } else {
-                    // Modern way to read a file as an ArrayBuffer
-                    const arrayBuffer = await file.arrayBuffer();
-                    const uint8Array = new Uint8Array(arrayBuffer);
-                    this.data = [...uint8Array]
-                        .map(byte => byte.toString(16).padStart(2, "0").toUpperCase())
-                        .join("");
+                    try {
+                        this.data = await file.text();
+                    } catch(e) {
+                        // Modern way to read a file as an ArrayBuffer
+                        const arrayBuffer = await file.arrayBuffer();
+                        const uint8Array = new Uint8Array(arrayBuffer);
+                        this.data = [...uint8Array]
+                            .map(byte => byte.toString(16).padStart(2, "0").toUpperCase())
+                            .join("");
+                    }
                 }
             } catch (err) {
                 console.error("Error processing file:", err);
@@ -238,13 +242,12 @@ export default {
                 }
             } else { // Handle pasted text
                 try {
-                    const text = event.clipboardData.getData('text/plain');
+                    this.data = event.clipboardData.getData('text/plain');
                     // Assuming fromBase64 is a polyfill or custom prototype method
-                    const uint8Array = Uint8Array.fromBase64(text);
-                    this.data = [...uint8Array]
-                        .map(byte => byte.toString(16).padStart(2, '0').toUpperCase())
-                        .join('');
-                    
+                    // const uint8Array = Uint8Array.fromBase64(text);
+                    // this.data = [...uint8Array]
+                    //    .map(byte => byte.toString(16).padStart(2, '0').toUpperCase())
+                    //    .join('')
                     // Create a placeholder file object for the `open` method
                     this.file = { name: "Pasted Content" };
 
@@ -263,7 +266,7 @@ export default {
 };
 </script>
 
-<style>
+<style scoped>
 /* Style of the drop zone, dashed border with centered text and pointer cursor */
 .drop-zone {
     display:flex;
