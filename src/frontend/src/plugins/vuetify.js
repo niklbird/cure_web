@@ -6,6 +6,7 @@
 import '@mdi/font/css/materialdesignicons.css'
 import 'vuetify/styles'
 
+
 // Setup Vuetify
 import { createVuetify } from 'vuetify'
 
@@ -16,11 +17,13 @@ export default createVuetify({
         colors: {
           // keep defaults + add yours
           content: '#1D3557',
+          modified: 'rgba(226, 226, 226, 0.1)',
         },
       },
       dark: {
         colors: {
           content: '#BDE1EF',
+          modified: 'rgba(51, 52, 51, 0.3)',
         },
       },
     },

@@ -195,8 +195,8 @@ export default {
     border-radius: 4px;
 }
 
-.edited {
-    background-color: rgba(0, 255, 0, 0.1);
+.modified {
+    background-color: rgb(var(--v-theme-modified));
 }
 
 .node-header:hover {
