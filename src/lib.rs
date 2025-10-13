@@ -309,7 +309,8 @@ impl State{
         if ob_typ == ObjectType::UNKNOWN{
             return Err("Invalid object type".to_string());
         }
-        let obj = cure_pp::cure_object::new_object(&conf, &ob_typ);
+        let mut obj = cure_pp::cure_object::new_object(&conf, &ob_typ);
+        obj.fix_fields(&cure_repo::FixingLevel::Full, &conf, None);
         let state = State{tree: obj.tree};
         Ok(state)
     }
