@@ -12,7 +12,7 @@
     >
         <div 
             class="node-header"  
-            :class="{ 'dragover': isDragOver(node.children.length) }"
+            :class="{ 'dragover': isDragOver(node.children.length), 'modified': node.edited }"
             @click="toggleExpand()"
             @dragover.prevent="(event) => onDragOver(event, node.children.length)"
             @dragleave="onDragLeave"
@@ -193,6 +193,10 @@ export default {
     align-items: center;
     white-space: nowrap;
     border-radius: 4px;
+}
+
+.edited {
+    background-color: rgba(0, 255, 0, 0.1);
 }
 
 .node-header:hover {
