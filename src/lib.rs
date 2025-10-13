@@ -4,7 +4,7 @@ use regex::Regex;
 use tar::Builder;
 use wasm_bindgen::prelude::*;
 use cure_asn1::{rpki::ObjectType, tree_parser::{Tree, Types}};
-use std::io::Cursor;
+use std::{fs, io::Cursor};
 
 use flate2::write::GzEncoder;
 use flate2::Compression;
@@ -153,18 +153,23 @@ impl State{
 
         if is_pem(&data){
             let s = data.split("\n").collect::<Vec<&str>>();
+
+            return Err("PEM not supported yet".to_string());
             if s.len() < 3{
                 return Err("Invalid data, looked like PEM but isnt".to_string());
             }
 
             // Remove first and last line to get rid of PEM Header / Footer
             let s = &s[1..s.len() -1];
-            data = s.join("\n");
+            data = s.join("");
+
+            fs::write("./test", data.clone()).unwrap();
+            
         }
 
 
         if is_hex(&data) == false && is_base64(&data) == false{
-            return Err("Invalid data".to_string());
+            return Err("Invalid data2".to_string());
         }
 
         let decoded;
@@ -182,7 +187,7 @@ impl State{
         let tree = cure_asn1::interface::parse_tree(&decoded.unwrap(), "");
 
         if tree.is_none(){
-            return Err("Invalid data".to_string());
+            return Err("Invalid data3".to_string());
         }
 
         Ok(State{
@@ -344,6 +349,8 @@ impl State{
         let val = val_to_bytes(new_tag, new_content.clone())?;
         self.tree.tokens.get_mut(&id).unwrap().data = val;
         self.tree.tokens.get_mut(&id).unwrap().tag = Types::from_type_id(new_tag);
+        self.tree.tokens.get_mut(&id).unwrap().tag_u = new_tag;
+
         self.tree.tokens.get_mut(&id).unwrap().visual_tag = vec![new_tag];
 
         if new_length.is_some(){
@@ -421,7 +428,8 @@ fn val_to_bytes(typ: u8, value: String) -> Result<Vec<u8>, String>{
     }
 
     if value.starts_with("0x") {
-        return hex::decode(value).map_err(|_| "Hex Decode Error".to_string());
+        let new_val = value[2..].to_string();
+        return hex::decode(new_val).map_err(|_| "Hex Decode Error".to_string());
 
     }
     
