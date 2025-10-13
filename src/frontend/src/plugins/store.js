@@ -257,8 +257,8 @@ export default createStore({
         nodeChanged: function (state, context) {
             const tab = state.tabs.find(tab => tab.id == context.tab)
             updateCommitHistory(state, tab.count, ["nodeChanged", context], context.push ?? true)
-
             tab.state.adapt_node_all(context.id, context.tag, context.length, context.content)
+            tab.tree = JSON.parse(tab.state.get_nodes())
         },
         nodeUpdated: function (state, context) {
             const tab = state.tabs.find(tab => tab.id == context.tab)
