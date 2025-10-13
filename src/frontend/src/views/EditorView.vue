@@ -352,6 +352,7 @@ export default {
                     state: this.state.encode_store(),
                     report: report
                 })
+                this.reportTab = this.reports.length - 1
             
             } catch (error) {
                 console.error("Error during test case execution:", error);
