@@ -71,7 +71,7 @@ export default {
             path: "editor",
             routes: [
                 { name: "EDITOR", path: "editor" },
-                { name: "FUZZING", path: "fuzzing" },
+                // { name: "FUZZING", path: "fuzzing" },
                 { name: "ABOUT", path: "about" }
             ]
         };
