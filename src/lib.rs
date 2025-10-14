@@ -216,7 +216,12 @@ impl State{
         }
 
         // Add the node to the new parent
-        self.tree.tokens.get_mut(&new_parent).unwrap().children.insert(child_index, id);
+        if child_index < self.tree.tokens.get_mut(&new_parent).unwrap().children.len(){
+            self.tree.tokens.get_mut(&new_parent).unwrap().children.insert(child_index, id);
+        }
+        else{
+            self.tree.tokens.get_mut(&new_parent).unwrap().children.push(id);
+        }
         self.tree.tokens.get_mut(&id).unwrap().parent = new_parent;
         self.tree.taint_parents(id);
         self.tree.fix_sizes(true);
