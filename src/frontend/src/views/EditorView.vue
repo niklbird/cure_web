@@ -309,7 +309,7 @@ export default {
                 return
             }
             // Calculate scroll position to center the target
-            const scrollTop = (this.$store.getters.positions[id][0] - this.bytesTop) - 50;
+            const scrollTop = (this.$store.getters.positions[id][0] - this.bytesTop) - 250;
             const byteContainer = this.$refs.bytes
 
             // Smooth scrolling
