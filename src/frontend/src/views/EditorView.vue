@@ -174,7 +174,6 @@
 </template>
 
 <script>
-import init from '@/rust/cure_web.js'
 import ByteNode from '@/components/ByteNode.vue'
 import TreeNode from '@/components/TreeNode.vue'
 import UploadCard from '@/components/UploadCard.vue'
@@ -490,8 +489,6 @@ export default {
         },
     },
     async beforeCreate() {
-        await init()
-
         try {
             // Probe to see if there is a local backend running
             await axios.get(local_backend + "probe");
