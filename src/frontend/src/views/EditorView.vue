@@ -400,9 +400,10 @@ export default {
             this.$store.commit("nodeAdded", {
                 tab: this.$store.state.currentTab,
                 tag: node.tag[0],
-                content: node.content[0],
+                content: node.content[2],
                 parent: node.parent,
-                label: node.label
+                label: node.label,
+                index: this.$store.getters.getNodeFromId(node.parent).children.indexOf(node.id) + 1
             })
         },
         deleteNode: function () {
