@@ -25,6 +25,7 @@ export class State {
   encode_store(): string;
   static from_stored(encoded: string): State;
   infer_object_type(): string;
+  get_all_oids(): string;
 }
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
@@ -53,6 +54,7 @@ export interface InitOutput {
   readonly state_encode_store: (a: number) => [number, number];
   readonly state_from_stored: (a: number, b: number) => [number, number, number];
   readonly state_infer_object_type: (a: number) => [number, number];
+  readonly state_get_all_oids: (a: number) => [number, number];
   readonly __wbindgen_exn_store: (a: number) => void;
   readonly __externref_table_alloc: () => number;
   readonly __wbindgen_export_2: WebAssembly.Table;

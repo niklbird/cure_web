@@ -3,7 +3,7 @@ use cure_pp::{cure_object::CureObject, cure_repo::{self, new_repo}, repository_u
 use regex::Regex;
 use tar::Builder;
 use wasm_bindgen::prelude::*;
-use cure_asn1::{rpki::ObjectType, tree_parser::{Tree, Types}};
+use cure_asn1::{rpki::ObjectType, tree_parser::{self, Tree, Types}};
 use std::{fs, io::Cursor};
 
 use flate2::write::GzEncoder;
@@ -440,6 +440,12 @@ impl State{
     pub fn infer_object_type(&self) -> String{
         self.tree.infer_own_type()
     }
+
+    #[wasm_bindgen]
+    pub fn get_all_oids(&self) -> String{
+        let oids = tree_parser::rpki_oid_map().keys().cloned().collect::<Vec<&str>>();
+        serde_json::to_string(&oids).unwrap()
+    }
 }
 
 fn val_to_bytes(typ: u8, value: String) -> Result<Vec<u8>, String>{
@@ -457,6 +463,12 @@ fn val_to_bytes(typ: u8, value: String) -> Result<Vec<u8>, String>{
         0x01 => { // Boolean
             let v = value.parse::<u8>();
             if v.is_err(){
+                if value.to_lowercase() == "true".to_string(){
+                    return Ok(vec![255]);
+                }
+                else if value.to_lowercase() == "false".to_string(){
+                    return Ok(vec![0]);
+                }
                 return Err("Invalid integer, only 0 - 255 allowed".to_string());
             }
             return Ok(vec![v.unwrap()]);
