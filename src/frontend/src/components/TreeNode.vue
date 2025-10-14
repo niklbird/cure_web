@@ -1,6 +1,6 @@
 <template>
     <div 
-        draggable="true"
+        :draggable="!isMobile"
         class="tree-node draggable"
         @contextmenu.stop="openMenu"
         @touchstart.stop="handleTouchStart"
@@ -61,8 +61,15 @@
 </template>
 
 <script>
+import { useDisplay } from 'vuetify';
+
 export default {
     // ... (props, emits, data are unchanged) ...
+    setup() {
+        const { mobile } = useDisplay()
+
+        return { isMobile: mobile }
+    },
     props: {
         node: Object,
         simplify: Boolean
@@ -70,8 +77,7 @@ export default {
     emits: ["rightclick"],
     data() {
         return {
-            expandedContent: false,
-            touchTimer: null,
+            expandedContent: false
         };
     },
     computed: {
@@ -98,11 +104,6 @@ export default {
     },
     methods: {
         // ... (handleTouchStart, handleTouchEnd, openMenu are unchanged) ...
-        handleTouchStart(event) {
-            clearTimeout(this.touchTimer);
-            this.touchTimer = setTimeout(() => { this.openMenu(event); }, 500);
-        },
-        handleTouchEnd() { clearTimeout(this.touchTimer); },
         openMenu (event) {
             event.preventDefault();
             const clientX = event.touches ? event.touches[0].clientX : event.clientX;
@@ -122,7 +123,7 @@ export default {
             const draggedId = this.$store.getters.draggedNodeId;
             
             // Ensure valid drop: not dropping onto itself or its own descendant
-            if ((target !== -1) && (target[0] != this.node.id) && !this.$store.getters.isDescendant(draggedId, target[0])) {
+            if ((target[0] !== -1) && (target[0] != this.node.id) && !this.$store.getters.isDescendant(draggedId, target[0])) {
                 this.$store.commit("nodeMoved", {
                     tab: this.$store.state.currentTab,
                     id: this.node.id,

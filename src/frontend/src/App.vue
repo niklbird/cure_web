@@ -56,11 +56,15 @@ import AboutView from "./views/AboutView.vue";
 import FuzzingView from "./views/FuzzingView.vue";
 import logo from "./assets/logo.png"
 import { useDisplay } from 'vuetify'
+import init from '@/rust/cure_web.js'
+
 
 export default {
     // We use setup() to access modern Vuetify features like useDisplay
     setup() {
         const { mobile } = useDisplay()
+        init()
+
         return { isMobile: mobile }
     },
     data() {

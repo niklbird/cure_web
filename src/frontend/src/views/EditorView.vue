@@ -174,7 +174,6 @@
 </template>
 
 <script>
-import init from '@/rust/cure_web.js'
 import ByteNode from '@/components/ByteNode.vue'
 import TreeNode from '@/components/TreeNode.vue'
 import UploadCard from '@/components/UploadCard.vue'
@@ -401,9 +400,10 @@ export default {
             this.$store.commit("nodeAdded", {
                 tab: this.$store.state.currentTab,
                 tag: node.tag[0],
-                content: node.content[0],
+                content: node.content[2],
                 parent: node.parent,
-                label: node.label
+                label: node.label,
+                index: this.$store.getters.getNodeFromId(node.parent).children.indexOf(node.id) + 1
             })
         },
         deleteNode: function () {
@@ -490,8 +490,6 @@ export default {
         },
     },
     async beforeCreate() {
-        await init()
-
         try {
             // Probe to see if there is a local backend running
             await axios.get(local_backend + "probe");

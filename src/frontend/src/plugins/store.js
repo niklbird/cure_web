@@ -237,7 +237,7 @@ export default createStore({
             const tab = state.tabs.find(tab => tab.id == context.tab)
             updateCommitHistory(state, tab.count, ["nodeAdded", context], context.push ?? true)
             tab.state.add_node(
-                context.tag, context.content, context.parent, context.label
+                context.tag, context.content, context.parent, context.label, context.index ?? null
             )
             tab.tree = JSON.parse(tab.state.get_nodes())
         },
