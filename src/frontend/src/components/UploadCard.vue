@@ -241,7 +241,7 @@ export default {
                 for (let file of files) {
                     await this.processFile(file);
 
-                    if (multiple || this.$store.getters.tabs.length > 0) {
+                    if (multiple || this.$store.getters.tabs.length == 0) {
                         this.open(true);
                     } else {
                         this.dialog = true;
@@ -258,7 +258,7 @@ export default {
                     // Create a placeholder file object for the `open` method
                     this.file = { name: "Pasted Content" };
 
-                    if (this.$store.getters.tabs.length > 0) {
+                    if (this.$store.getters.tabs.length == 0) {
                         this.open(true);
                     } else {
                         this.dialog = true;
