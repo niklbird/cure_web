@@ -35,7 +35,7 @@
         <!-- Drop zone with handlers for paste, drag and drop and clicks -->
         <v-card>
             <v-card-text
-                style="background-color: white; border-radius: 8px;"
+                style="border-radius: 8px;"
                 class="drop-zone"
                 :class="{ 'hovered': dragOver }"  
                 @dragover.prevent="dragOver = true"
@@ -288,10 +288,5 @@ export default {
 /* Style is automatically applied when cursor hovers over the drop zone */
 .drop-zone:hover {
   background-color: #f9f9f9;
-}
-
-/* Style is invoked when a file is dragged over the drop zone */
-.hovered {
-    background-color: #f9f9f9 !important;
 }
 </style>
