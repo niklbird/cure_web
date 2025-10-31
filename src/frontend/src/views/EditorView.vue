@@ -149,7 +149,7 @@
                 </v-tabs>
             </v-col>
 
-            <v-col cols="12" md="7">
+            <v-col cols="12" md="6">
                 <div :style="{ position: 'absolute', left: `${x}px`, top: `${y}px` }" ref="activator">
                     <MenuComponent :items="context_items" />
                 </div>
@@ -161,9 +161,22 @@
                 </div>
             </v-col>
 
-            <v-col cols="12" md="3">
-                <div class="bytes" ref="bytes">
-                    <ByteNode v-if="tree.length > 0" :node="findRoot()"></ByteNode>
+            <v-col cols="12" md="4">
+                <div class="byte-grid-container" ref="bytes">
+                    <div class="byte-grid" v-if="tree.length > 0">
+                        <span
+                            v-for="(byte, index) in flatBytes"
+                            :key="index"
+                            :class="[
+                                byte.type,
+                                highlightedNodeAndDescendants.has(byte.nodeId) ? 'highlighted' : ''
+                            ]"
+                            :data-node-id="byte.nodeId"
+                            @click="$store.commit('highlightedSet', byte.nodeId)"
+                        >
+                            {{ dec2hex(byte.value) }}
+                        </span>
+                    </div>
                 </div>
             </v-col>
         </v-row>
@@ -174,7 +187,6 @@
 </template>
 
 <script>
-import ByteNode from '@/components/ByteNode.vue'
 import TreeNode from '@/components/TreeNode.vue'
 import UploadCard from '@/components/UploadCard.vue'
 import ElementMenu from '@/components/ElementMenu.vue'
@@ -268,7 +280,6 @@ export default {
         };
     },
     components: {
-        ByteNode,
         TreeNode,
         UploadCard,
         ElementMenu,
@@ -300,20 +311,112 @@ export default {
             set: function (value) {
                 this.$store.commit('tabSelected', value)
             }
+        },
+        flatBytes() {
+            const bytes = [];
+            const root = this.findRoot();
+
+            if (!root) {
+                return [];
+            }
+
+            // Recursive function to traverse the node tree
+            const traverse = (node) => {
+                // Add tag bytes
+                if (node.tag && node.tag[2]) {
+                    node.tag[2].forEach(byte => {
+                        bytes.push({
+                            value: byte,
+                            type: 'tag',
+                            nodeId: node.id
+                        });
+                    });
+                }
+                // Add length bytes
+                if (node.length && node.length[2]) {
+                    node.length[2].forEach(byte => {
+                        bytes.push({
+                            value: byte,
+                            type: 'length',
+                            nodeId: node.id
+                        });
+                    });
+                }
+                // Add content bytes
+                if (node.content && node.content[3]) {
+                    node.content[3].forEach(byte => {
+                        bytes.push({
+                            value: byte,
+                            type: 'content',
+                            nodeId: node.id
+                        });
+                    });
+                }
+                // Recurse for children
+                if (node.children) {
+                    node.children.forEach(childId => {
+                        const childNode = this.$store.getters.getNodeFromId(childId);
+                        if (childNode) {
+                            traverse(childNode);
+                        }
+                    });
+                }
+            };
+
+            traverse(root);
+            return bytes;
+        },
+        highlightedNodeAndDescendants() {
+            const highlightedId = this.$store.getters.highlighted;
+            const highlightSet = new Set();
+            
+            if (highlightedId === null || highlightedId === undefined || highlightedId === -1) {
+                return highlightSet; // Return empty set if nothing is selected
+            }
+
+            // Recursive function to add a node and all its children to the set
+            const collectChildren = (nodeId) => {
+                if (highlightSet.has(nodeId)) {
+                    return; // Already processed or invalid
+                }
+                
+                highlightSet.add(nodeId); // Add the node itself
+                
+                const node = this.$store.getters.getNodeFromId(nodeId);
+                
+                if (node && node.children) {
+                    node.children.forEach(childId => {
+                        collectChildren(childId); // Recurse for children
+                    });
+                }
+            };
+
+            collectChildren(highlightedId); // Start collection from the highlighted node
+            return highlightSet;
         }
     },
     watch: {
         highlighted: function (id) {
-            // Scroll the byte view to the bytes of the currently selected element
-            if (!Object.prototype.hasOwnProperty.call(this.$store.getters.positions, id)) {
-                return
+            if (!id || !this.$refs.bytes) {
+                return;
             }
-            // Calculate scroll position to center the target
-            const scrollTop = (this.$store.getters.positions[id][0] - this.bytesTop) - 250;
-            const byteContainer = this.$refs.bytes
+            const byteContainer = this.$refs.bytes; // This is our .byte-grid-container
 
-            // Smooth scrolling
-            byteContainer.scrollTo({ top: scrollTop, behavior: 'smooth' });
+            // Find the first span that belongs to this node
+            const targetElement = byteContainer.querySelector(`span[data-node-id="${id}"]`);
+
+            if (targetElement) {
+                // Calculate scroll position to center the element
+                const containerHeight = byteContainer.clientHeight;
+                const targetTopRelativeToContainer = targetElement.offsetTop;
+
+                const scrollTop = targetTopRelativeToContainer - (containerHeight / 2) + (targetElement.clientHeight / 2);
+                
+                byteContainer.scrollTo({
+                    top: scrollTop,
+                    behavior: 'smooth'
+                });
+            }
         }
     },
     methods: {
@@ -566,16 +669,54 @@ export default {
     color: red;
 }
 
-.bytes {
-    width: 100%;
+/* This is the scrolling container, no changes here */
+.byte-grid-container {
     height: 84vh;
-    display: flex;
-    font-family: monospace; /* Monospace for byte representation */
-    font-size: 1rem; /* Increased font size */
-    padding: 20px;
+    font-family: monospace;
+    font-size: 1rem;
+    padding: 10px;
     overflow: scroll; 
     position: sticky;
     border: 1px solid #ccc;
+    box-sizing: border-box;
+}
+
+.byte-grid {
+    display: grid;
+    grid-template-columns: repeat(16, minmax(min-content, 1fr));
+}
+
+/* This styles the individual byte spans */
+.byte-grid > span {
+    display: inline-block;
+    text-align: center;
+    /* This creates a 0.05em padding on each side,
+       totaling a 0.1em gap between bytes. */
+    padding: 0.01em; 
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+/* This selector finds the 9th child of every 16-byte group
+  (e.g., 9th, 25th, 41st...)
+*/
+.byte-grid > span:nth-child(16n + 9) {
+    /* We add the 0.6em gap as padding.
+       (0.65em = 0.6em main gap + 0.05em base padding) */
+    padding-left: 0.65em; 
+}
+
+/* Highlight style remains the same */
+.highlighted {
+    background-color: gray;
+    font-weight: bold;
+}
+
+/* Media query remains the same */
+@media (max-width: 960px) {
+  .asn-tree, .byte-grid-container {
+    height: 50vh; 
+  }
 }
 
 .asn-tree {
