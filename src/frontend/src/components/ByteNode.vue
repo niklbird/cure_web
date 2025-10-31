@@ -78,8 +78,8 @@ export default {
 .highlighted {
     background-color: gray;
     font-weight: bold;
-    padding: 2px 4px;
-    border-radius: 4px;
+/*    padding: 2px 4px;
+    border-radius: 4px;*/
 }
 
 .tag, .length, .content {
