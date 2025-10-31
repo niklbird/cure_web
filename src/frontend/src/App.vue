@@ -6,7 +6,7 @@
             <v-app-bar-title>
                 <div class="d-flex align-center" style="gap: 12px;">
                     <img :src="logo" alt="Logo" height="32"/>
-                    <span class="logo-text">{{ path == "editor" ? "DERP" : "CURE" }}</span>
+                    <span class="logo-text">{{ path == "editor" || path == "about" ? "DERP" : "CURE" }}</span>
                 </div>
             </v-app-bar-title>
 
