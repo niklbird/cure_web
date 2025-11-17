@@ -611,6 +611,8 @@ export default {
         }
     },
     mounted() {
+        document.title = "Live ASN.1 Editor & Parser | DERP";
+
         window.addEventListener('keydown', this.handleKeydown)
     },
     beforeUnmount() {

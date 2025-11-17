@@ -5,7 +5,7 @@
       position="relative"
       style="margin: 20px auto;"
     >
-      <v-card-title><h1 style="text-align: center">About DER P(arser)</h1></v-card-title>
+      <v-card-title><h1 style="text-align: center">About DER Parser</h1></v-card-title>
       <v-card-text>
         <p style="text-align: justify; font-size: 1.5rem">
           DERP is a web tool suite for parsing, editing and viewing arbitrary ASN.1 encoded files.
@@ -17,6 +17,10 @@
           and to manually create test-cases for RP implementations to identify issues and vulnerabilities.
         </p>
         <br>
+
+        <h2 style="font-size: 1.5rem; font-weight: 500;">
+          Development and License
+        </h2>
         <p style="font-size: 1.5rem">
           DERP is developed and maintained by the Cyberbruecke research group at <a href="">Goethe University Frankfurt (ATHENE).</a>
           <br>Code is available on <a href="https://github.com/Cyberbruecke/cure_web">Github</a> under the MIT license.
@@ -26,3 +30,11 @@
 
   </div>
 </template>
+
+<script>
+export default {
+  mounted() {
+    document.title = "About DERP | ASN.1 Editor and RPKI Test Suite";
+  }
+}
+</script>
