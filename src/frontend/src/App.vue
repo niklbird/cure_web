@@ -6,18 +6,22 @@
             <v-app-bar-title>
                 <div class="d-flex align-center" style="gap: 12px;">
                     <img :src="logo" alt="Logo" height="32"/>
-                    <span class="logo-text">DERP</span>
+                    <span class="logo-text">{{ $route.path === '/about' ? "DERP" : "CURE" }}</span>
                 </div>
             </v-app-bar-title>
 
             <div v-if="!isMobile" class="d-flex align-center" style="gap: 8px;">
                 <v-btn 
-                    v-for="link in routes" 
-                    :key="link.path" 
-                    @click="path = link.path"
-                    :variant="path === link.path ? 'outlined' : 'text'"
+                    to="/"
+                    :variant="$route.path === '/' ? 'outlined' : 'text'"
                 >
-                    {{ link.name }}
+                    EDITOR
+                </v-btn>
+                <v-btn 
+                    to="/about"
+                    :variant="$route.path === '/about' ? 'outlined' : 'text'"
+                >
+                    ABOUT
                 </v-btn>
             </div>
 
@@ -33,34 +37,31 @@
         <v-navigation-drawer v-model="drawer" v-if="isMobile" temporary>
             <v-list nav>
                 <v-list-item
-                    v-for="link in routes"
-                    :key="link.path"
-                    @click="path = link.path; drawer = false"
-                    :active="path === link.path"
-                    :title="link.name"
+                    to="/"
+                    title="EDITOR"
+                    @click="drawer = false"
+                ></v-list-item>
+                <v-list-item
+                    to="/about"
+                    title="ABOUT"
+                    @click="drawer = false"
                 ></v-list-item>
             </v-list>
         </v-navigation-drawer>
 
         <v-main>
-            <FuzzingView v-if="path == 'fuzzing'"/>
-            <EditorView v-if="path == 'editor'"/>
-            <AboutView v-if="path == 'about'"/>
+            <router-view />
         </v-main>
     </v-app>
 </template>
 
 <script>
-import EditorView from "./views/EditorView.vue";
-import AboutView from "./views/AboutView.vue";
-import FuzzingView from "./views/FuzzingView.vue";
 import logo from "./assets/logo.png"
 import { useDisplay } from 'vuetify'
 import init from '@/rust/cure_web.js'
 
 
 export default {
-    // We use setup() to access modern Vuetify features like useDisplay
     setup() {
         const { mobile } = useDisplay()
         init()
@@ -70,21 +71,10 @@ export default {
     data() {
         return {
             logo,
-            drawer: false, // Controls the mobile navigation drawer
-            mode: "light",
-            path: "editor",
-            routes: [
-                { name: "EDITOR", path: "editor" },
-                // { name: "FUZZING", path: "fuzzing" },
-                { name: "ABOUT", path: "about" }
-            ]
+            drawer: false,
+            mode: "light"
         };
-    },
-    components: {
-        EditorView,
-        AboutView,
-        FuzzingView
-    },
+    }
 };
 </script>
 

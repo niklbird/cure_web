@@ -5,11 +5,13 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import vuetify from './plugins/vuetify'
 import store from './plugins/store'
+import router from './plugins/router'
 
 
 // Create the Vue application instance and mount it
 // Register used plugins (vuex store, vue-router, vuetify)
 createApp(App)
-    .use(store)
-    .use(vuetify)
-    .mount('#app')
+  .use(vuetify)
+  .use(store)
+  .use(router)
+  .mount('#app')
