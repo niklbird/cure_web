@@ -82,6 +82,60 @@
         </v-card>
     </v-overlay>
 
+    <!-- Share Dialog -->
+    <v-dialog v-model="showShareDialog" max-width="600">
+        <v-card>
+            <v-card-title class="d-flex align-center">
+                <v-icon start>mdi-share-variant</v-icon>
+                Share Link
+            </v-card-title>
+            <v-card-text>
+                <p class="text-body-2 mb-3">
+                    Copy this link to share the current ASN.1 object:
+                </p>
+                <v-text-field
+                    v-model="shareUrl"
+                    readonly
+                    variant="outlined"
+                    density="compact"
+                    hide-details
+                    @focus="$event.target.select()"
+                >
+                    <template v-slot:append-inner>
+                        <v-btn
+                            icon="mdi-content-copy"
+                            size="small"
+                            variant="text"
+                            @click="copyShareUrl"
+                        ></v-btn>
+                    </template>
+                </v-text-field>
+                <v-alert
+                    v-if="shareUrlTooLong"
+                    type="warning"
+                    variant="tonal"
+                    density="compact"
+                    class="mt-3"
+                >
+                    The object is large, so the URL is quite long. Some browsers may not support URLs of this length.
+                </v-alert>
+                <v-alert
+                    v-if="copied"
+                    type="success"
+                    variant="tonal"
+                    density="compact"
+                    class="mt-3"
+                >
+                    Link copied to clipboard!
+                </v-alert>
+            </v-card-text>
+            <v-card-actions>
+                <v-spacer></v-spacer>
+                <v-btn variant="tonal" @click="showShareDialog = false">Close</v-btn>
+            </v-card-actions>
+        </v-card>
+    </v-dialog>
+
     <v-container fluid>
         <v-row v-if="store.tabs.length > 0">
             <v-col cols="12" sm="auto">
@@ -93,6 +147,12 @@
                 <v-btn color="primary" :block="isMobile">
                     EXPORT
                     <MenuComponent :items="formats.map(format => ({ title: format.toUpperCase(), action: () => download(format) }))" />
+                </v-btn>
+            </v-col>
+            <v-col cols="12" sm="auto" v-if="store.tree.length > 0">
+                <v-btn color="primary" @click="openShareDialog" :block="isMobile">
+                    <v-icon start>mdi-share-variant</v-icon>
+                    SHARE
                 </v-btn>
             </v-col>
             <v-col cols="12" sm="auto" v-if="store.tree.length > 0 && reachable && rpki_types.includes(object_type)">
@@ -180,7 +240,7 @@
                 </div>
             </v-col>
         </v-row>
-        <v-row v-if="store.tabs.length == 0">
+        <v-row v-if="store.tabs.length === 0">
             <UploadCard></UploadCard>
         </v-row>
     </v-container>
@@ -222,6 +282,10 @@ export default {
             reportTab: 0,
             simplify: false,
             formats: ["binary", "base64", "json", "repository"],
+            showShareDialog: false,
+            shareUrl: '',
+            shareUrlTooLong: false,
+            copied: false,
             context_items: [
                 {
                     "title": "COPY ...",
@@ -356,6 +420,86 @@ export default {
             }
 
             return result
+        },
+        // Generate a shareable URL with the current object encoded
+        generateShareUrl() {
+            if (!this.store.state) return ''
+            
+            try {
+                const base64Data = this.store.state.export_base64()
+                // Use URL-safe base64 encoding (replace + with -, / with _, remove padding =)
+                const urlSafeBase64 = base64Data
+                    .replace(/\+/g, '-')
+                    .replace(/\//g, '_')
+                    .replace(/=+$/, '')
+                
+                const baseUrl = window.location.origin + window.location.pathname
+                const name = encodeURIComponent(this.store.name || 'Shared')
+                return `${baseUrl}?data=${urlSafeBase64}&name=${name}`
+            } catch (e) {
+                console.error('Error generating share URL:', e)
+                return ''
+            }
+        },
+        openShareDialog() {
+            this.shareUrl = this.generateShareUrl()
+            this.shareUrlTooLong = this.shareUrl.length > 2000
+            this.copied = false
+            this.showShareDialog = true
+        },
+        async copyShareUrl() {
+            try {
+                await navigator.clipboard.writeText(this.shareUrl)
+                this.copied = true
+                setTimeout(() => {
+                    this.copied = false
+                }, 3000)
+            } catch (e) {
+                console.error('Failed to copy URL:', e)
+            }
+        },
+        // Load data from URL query parameters
+        loadFromUrl() {
+            const urlParams = new URLSearchParams(window.location.search)
+            const data = urlParams.get('data')
+            const name = urlParams.get('name')
+            
+            if (data) {
+                try {
+                    // Convert URL-safe base64 back to standard base64
+                    let base64Data = data
+                        .replace(/-/g, '+')
+                        .replace(/_/g, '/')
+                    
+                    // Add padding if needed
+                    const padding = base64Data.length % 4
+                    if (padding) {
+                        base64Data += '='.repeat(4 - padding)
+                    }
+                    
+                    console.log('Loading from URL, base64 length:', base64Data.length)
+                    
+                    const tabName = name ? decodeURIComponent(name) : 'Shared Object'
+                    this.store.addTab(tabName)
+                    
+                    // The State constructor accepts base64 strings directly
+                    this.store.stateSet({
+                        tab: this.store.currentTab,
+                        data: base64Data,
+                        type: 'base64'
+                    })
+                    
+                    // Clear the URL parameters after loading (keeps URL clean)
+                    window.history.replaceState({}, document.title, window.location.pathname)
+                    
+                    return true
+                } catch (e) {
+                    console.error('Error loading data from URL:', e)
+                    // Show more detailed error message
+                    alert('Failed to load the shared object: ' + (e.message || 'Unknown error'))
+                }
+            }
+            return false
         },
         async runTestCase() {
             let z = this.store.state.repositorify()
@@ -503,6 +647,28 @@ export default {
     mounted() {
         document.title = "Live ASN.1 Editor & Parser | DERP"
         window.addEventListener('keydown', this.handleKeydown)
+        
+        // Try to load data from URL on mount
+        // Use a small delay to ensure WASM is initialized
+        this.$nextTick(() => {
+            // Check if there's data in URL and try to load it
+            // Retry a few times if WASM isn't ready yet
+            const tryLoad = (attempts = 0) => {
+                try {
+                    this.loadFromUrl()
+                } catch (e) {
+                    if (attempts < 5) {
+                        console.log('WASM may not be ready, retrying...', attempts + 1)
+                        setTimeout(() => tryLoad(attempts + 1), 200)
+                    } else {
+                        console.error('Failed to load from URL after retries:', e)
+                    }
+                }
+            }
+            
+            // Initial delay to let WASM initialize
+            setTimeout(() => tryLoad(), 100)
+        })
     },
     beforeUnmount() {
         window.removeEventListener('keydown', this.handleKeydown)
@@ -559,7 +725,7 @@ export default {
 }
 
 .byte-grid-container {
-    height: 79vh;
+    height: 84vh;
     font-family: monospace;
     font-size: 1rem;
     padding: 10px;
@@ -601,7 +767,7 @@ export default {
     font-family: monospace;
     overflow: scroll;
     width: 100%;
-    height: 79vh;
+    height: 84vh;
     border: 1px solid #ccc;
 }
 
