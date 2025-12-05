@@ -180,7 +180,7 @@
                 </div>
             </v-col>
         </v-row>
-        <v-row>
+        <v-row v-if="store.tabs.length == 0">
             <UploadCard></UploadCard>
         </v-row>
     </v-container>
@@ -559,7 +559,7 @@ export default {
 }
 
 .byte-grid-container {
-    height: 84vh;
+    height: 79vh;
     font-family: monospace;
     font-size: 1rem;
     padding: 10px;
@@ -601,7 +601,7 @@ export default {
     font-family: monospace;
     overflow: scroll;
     width: 100%;
-    height: 84vh;
+    height: 79vh;
     border: 1px solid #ccc;
 }
 
