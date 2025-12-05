@@ -147,15 +147,17 @@
 </template>
 
 <script>
-import moment from "moment";
-import { ASN1_TYPES, TIME_TYPES } from '@/utils/types';
-import AutoComplete from '@/components/AutoComplete.vue';
-import { useDisplay } from 'vuetify';
+import moment from "moment"
+import { ASN1_TYPES, TIME_TYPES } from '@/utils/types'
+import AutoComplete from '@/components/AutoComplete.vue'
+import { useDisplay } from 'vuetify'
+import { useTabsStore } from '@/stores/tabs'
 
 export default {
     setup() {
-        const { mobile } = useDisplay();
-        return { isMobile: mobile };
+        const { mobile } = useDisplay()
+        const store = useTabsStore()
+        return { isMobile: mobile, store }
     },
     components: {
         AutoComplete
@@ -182,117 +184,114 @@ export default {
             pick: false,
             date: new Date(),
             time: new Date().toLocaleTimeString('en-GB')
-        };
+        }
     },
-    // IMPROVEMENT: Moved the items logic to a computed property
     computed: {
         asn1TypesForSelect() {
             return Object.entries(this.types).map(([key, value]) => ({
                 title: value.name,
                 value: key
-            }));
+            }))
         }
     },
     methods: {
         translate(value) {
-            let bytes;
+            let bytes
             if (typeof value === 'string') {
-                bytes = new TextEncoder().encode(value);
+                bytes = new TextEncoder().encode(value)
             } else if (typeof value === 'number') {
-                const buffer = new ArrayBuffer(4);
-                const view = new DataView(buffer);
-                view.setUint32(0, value, false);
-                bytes = new Uint8Array(buffer);
+                const buffer = new ArrayBuffer(4)
+                const view = new DataView(buffer)
+                view.setUint32(0, value, false)
+                bytes = new Uint8Array(buffer)
             } else if (typeof value === 'object' && value !== null) {
-                const jsonStr = JSON.stringify(value);
-                bytes = new TextEncoder().encode(jsonStr);
+                const jsonStr = JSON.stringify(value)
+                bytes = new TextEncoder().encode(jsonStr)
             } else {
-                throw new TypeError("Unsupported type for hex conversion");
+                throw new TypeError("Unsupported type for hex conversion")
             }
             const hex = Array.from(bytes)
                 .map(b => b.toString(16).padStart(2, '0'))
-                .join('');
-            return '0x' + hex;
+                .join('')
+            return '0x' + hex
         },
         confirmTime() {
-            this.date.setHours(...this.time.split(':'));
-            const moment_obj = moment(this.date);
-            const type = ASN1_TYPES[this.tag].name;
+            this.date.setHours(...this.time.split(':'))
+            const moment_obj = moment(this.date)
+            const type = ASN1_TYPES[this.tag].name
 
             if (type == "TIME-OF-DAY") {
-                this.content = moment_obj.format('HH:mm:ss');
+                this.content = moment_obj.format('HH:mm:ss')
             } else if (type == "TIME") {
-                this.content = moment_obj.format('YYYY-MM-DDTHH:mm:ss');
+                this.content = moment_obj.format('YYYY-MM-DDTHH:mm:ss')
             } else if (type == "DATE") {
-                this.content = moment_obj.format('YYYY-MM-DD');
+                this.content = moment_obj.format('YYYY-MM-DD')
             } else if (type == "DATE-TIME") {
-                this.content = moment_obj.format('YYYY-MM-DDTHH:mm:ss');
+                this.content = moment_obj.format('YYYY-MM-DDTHH:mm:ss')
             } else if (type == "GeneralizedTime") {
-                this.content = moment_obj.format('YYYYMMDDHHmmss');
+                this.content = moment_obj.format('YYYYMMDDHHmmss')
             } else if (type == "UTCTime") {
-                this.content = moment_obj.format('YYMMDDHHmmssZ');
+                this.content = moment_obj.format('YYMMDDHHmmssZ')
             } else if (type == "DURATION") {
-                const years = moment_obj.years();
-                const months = moment_obj.months();
-                const days = moment_obj.days();
-                const hours = moment_obj.hours();
-                const minutes = moment_obj.minutes();
-                const seconds = moment_obj.seconds();
+                const years = moment_obj.years()
+                const months = moment_obj.months()
+                const days = moment_obj.days()
+                const hours = moment_obj.hours()
+                const minutes = moment_obj.minutes()
+                const seconds = moment_obj.seconds()
 
-                let result = 'P';
-                if (years) result += `${years}Y`;
-                if (months) result += `${months}M`;
-                if (days) result += `${days}D`;
+                let result = 'P'
+                if (years) result += `${years}Y`
+                if (months) result += `${months}M`
+                if (days) result += `${days}D`
 
-                // time portion
                 if (hours || minutes || seconds) {
-                    result += 'T';
-                    if (hours) result += `${hours}H`;
-                    if (minutes) result += `${minutes}M`;
-                    if (seconds) result += `${seconds}S`;
+                    result += 'T'
+                    if (hours) result += `${hours}H`
+                    if (minutes) result += `${minutes}M`
+                    if (seconds) result += `${seconds}S`
                 }
 
-                // special case: 0 duration
-                if (result === 'P') result = 'PT0S';
+                if (result === 'P') result = 'PT0S'
 
                 this.content = result
             }
-            this.pick = false;
+            this.pick = false
         },
         verifyContent() {
-            if (this.content === "" || this.content === null) return true;
-            if (this.tag === null) return false;
-            if (ASN1_TYPES[this.tag].rules(this.content)) return true;
+            if (this.content === "" || this.content === null) return true
+            if (this.tag === null) return false
+            if (ASN1_TYPES[this.tag].rules(this.content)) return true
             if (ASN1_TYPES[this.tag].transform) {
-                const regex = ASN1_TYPES[this.tag].transform.regex;
+                const regex = ASN1_TYPES[this.tag].transform.regex
                 if (regex.test(this.content)) {
-                    this.content = ASN1_TYPES[this.tag].transform.converter(this.content);
-                    return true;
+                    this.content = ASN1_TYPES[this.tag].transform.converter(this.content)
+                    return true
                 }
             }
             if (!confirm("The content is not valid for the selected type. Do you still want to continue?")) {
-                return false;
+                return false
             } else {
                 this.content = this.translate(this.content)
-                return true;
+                return true
             }
         },
         addNode() {
             if (!this.verifyContent()) return
-            this.$store.commit('nodeAdded', {
-                tab: this.$store.state.currentTab,
+            this.store.nodeAdded({
+                tab: this.store.currentTab,
                 parent: this.parent,
                 tag: this.tag,
                 label: this.label,
                 content: this.content ? this.content : ""
-            });
-            this.$emit('close');
+            })
+            this.$emit('close')
         },
         changeNode() {
             if (!this.verifyContent()) return
 
-            this.$store.commit("nodeChanged", {
-                tab: this.$store.state.currentTab,
+            this.store.nodeChanged({
+                tab: this.store.currentTab,
                 id: this.node.id,
                 tag: this.tag,
                 length: this.length[0] != this.length ? this.length : null,
@@ -300,15 +299,15 @@ export default {
             })
 
             if (this.node.label != this.label) {
-                this.$store.commit("nodeUpdated", {
-                    tab: this.$store.state.currentTab,
+                this.store.nodeUpdated({
+                    tab: this.store.currentTab,
                     id: this.node.id,
                     value: this.label,
                     field: "label"
                 })
             }
-            this.$emit('close');
+            this.$emit('close')
         }
     }
-};
+}
 </script>

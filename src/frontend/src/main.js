@@ -1,17 +1,19 @@
 // This file is the entry point for the Vue.js application.
-// Likely not much to change here apart from registering new plugins.
+// Updated to use Pinia instead of Vuex
 
 import { createApp } from 'vue'
+import { createPinia } from 'pinia'
 import App from './App.vue'
 import vuetify from './plugins/vuetify'
-import store from './plugins/store'
 import router from './plugins/router'
 
+// Create the Pinia instance
+const pinia = createPinia()
 
 // Create the Vue application instance and mount it
-// Register used plugins (vuex store, vue-router, vuetify)
+// Register used plugins (pinia store, vue-router, vuetify)
 createApp(App)
+  .use(pinia)
   .use(vuetify)
-  .use(store)
   .use(router)
   .mount('#app')

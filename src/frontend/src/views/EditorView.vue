@@ -83,7 +83,7 @@
     </v-overlay>
 
     <v-container fluid>
-        <v-row v-if="tabs.length > 0">
+        <v-row v-if="store.tabs.length > 0">
             <v-col cols="12" sm="auto">
                 <v-btn @click="this.load = true" color="primary" :block="isMobile">
                     IMPORT
@@ -95,7 +95,7 @@
                     <MenuComponent :items="formats.map(format => ({ title: format.toUpperCase(), action: () => download(format) }))" />
                 </v-btn>
             </v-col>
-            <v-col cols="12" sm="auto" v-if="tree.length > 0 && reachable && rpki_types.includes(object_type)">
+            <v-col cols="12" sm="auto" v-if="store.tree.length > 0 && reachable && rpki_types.includes(object_type)">
                 <v-btn color="primary" @click="runTestCase" :block="isMobile">
                     RUN TEST CASE WITH CURE
                 </v-btn>
@@ -105,9 +105,9 @@
                     SHOW REPORTS
                 </v-btn>
             </v-col>
-            <v-col v-if="!isMobile && tree.length > 0" cols="12" sm="auto">
-                <v-btn  color="primary" @click="$store.dispatch('setAll', !$store.getters.anyExpanded)">
-                    {{ $store.getters.anyExpanded ? "COLLAPSE ALL" : "EXPAND ALL" }}
+            <v-col v-if="!isMobile && store.tree.length > 0" cols="12" sm="auto">
+                <v-btn  color="primary" @click="store.setAll(!store.anyExpanded)">
+                    {{ store.anyExpanded ? "COLLAPSE ALL" : "EXPAND ALL" }}
                 </v-btn>
             </v-col>
             <v-spacer v-if="!isMobile"></v-spacer>
@@ -126,7 +126,7 @@
             </v-col>                
         </v-row>
 
-        <v-row v-if="tabs.length > 0" id="tab-content">
+        <v-row v-if="store.tabs.length > 0" id="tab-content">
             <v-col id="tabs" cols="12" md="2">
                 <v-tabs 
                     v-model="currentTab"
@@ -134,16 +134,16 @@
                     show-arrows
                 >
                     <v-tab 
-                        v-for="tab in tabs" 
+                        v-for="tab in store.tabs" 
                         :key="tab.id"
                         :value="tab.id"
                     >
                         <div style="width: 100%; display: flex; justify-content: space-between; align-items: center;">
                             <div class="text-truncate">{{ tab.name }}</div>
-                            <v-btn elevation="0" icon="mdi-close" size="x-small" @click.stop="$store.commit('tabRemoved', tab.id)"></v-btn>
+                            <v-btn elevation="0" icon="mdi-close" size="x-small" @click.stop="store.tabRemoved(tab.id)"></v-btn>
                         </div>
                     </v-tab>
-                    <v-tab @click="$store.dispatch('addTab', 'Unnamed')" style="justify-content: center;">
+                    <v-tab @click="store.addTab('Unnamed')" style="justify-content: center;">
                         <v-icon>mdi-plus</v-icon>
                     </v-tab>
                 </v-tabs>
@@ -154,7 +154,7 @@
                     <MenuComponent :items="context_items" />
                 </div>
                 <div class="asn-tree">
-                    <TreeNode v-if="tree.length > 0" :node="findRoot()" @rightclick="(x, y, id) => openMenu(x, y, id)" :simplify="simplify || isMobile"/>
+                    <TreeNode v-if="store.tree.length > 0" :node="findRoot()" @rightclick="(x, y, id) => openMenu(x, y, id)" :simplify="simplify || isMobile"/>
                     <p v-else class="text-h6 text-center pa-5">
                         No ASN.1 data loaded. Please upload a file or select an example.
                     </p>
@@ -163,7 +163,7 @@
 
             <v-col cols="12" md="4">
                 <div class="byte-grid-container" ref="bytes">
-                    <div class="byte-grid" v-if="tree.length > 0">
+                    <div class="byte-grid" v-if="store.tree.length > 0">
                         <span
                             v-for="(byte, index) in flatBytes"
                             :key="index"
@@ -172,7 +172,7 @@
                                 highlightedNodeAndDescendants.has(byte.nodeId) ? 'highlighted' : ''
                             ]"
                             :data-node-id="byte.nodeId"
-                            @click="$store.commit('highlightedSet', byte.nodeId)"
+                            @click="store.elementHighlighted(byte.nodeId)"
                         >
                             {{ dec2hex(byte.value) }}
                         </span>
@@ -191,93 +191,60 @@ import TreeNode from '@/components/TreeNode.vue'
 import UploadCard from '@/components/UploadCard.vue'
 import ElementMenu from '@/components/ElementMenu.vue'
 import MenuComponent from '@/components/MenuComponent.vue'
-import axios from 'axios';
+import axios from 'axios'
 import { useDisplay } from 'vuetify'
-
+import { useTabsStore } from '@/stores/tabs'
 
 const public_backend = "https://api.asn1.app/"
 const local_backend = "http://localhost:21999/"
 
-
 export default {
     setup() {
         const { mobile } = useDisplay()
+        const store = useTabsStore()
 
-        return { isMobile: mobile }
+        return { isMobile: mobile, store }
     },
     data() {
         return {
-            // position of context menu activator
             x: 0,
             y: 0,
-            // Current parent relevant for adding children
             parent: 0,
-            // Currently selected node for the context menu
             activeNode: null,
-            // Flag, whether to show new element menu or not
             showElementMenu: false,
-            // Information on the bytes window for scrolling
             bytesTop: 0,
-            // Configurable backend URL
             backendUrl: local_backend,
             reachable: false,
-            // Flag to show if upload window should be shown
             load: false,
-            // While exporting, loading is set to show the loading overlay
             loading: false,
             reports: [],
             showReports: false,
             reportTab: 0,
-            // Flag whether to show the tree in simplified mode or not
             simplify: false,
-            // Menu Items shown when clicking the "Import" button
-            // Formats allowed for the export button
             formats: ["binary", "base64", "json", "repository"],
-            // Menu items of the context menu, new items can be added here
             context_items: [
                 {
                     "title": "COPY ...",
                     "children": [
-                        {
-                            "title": "NODE",
-                            "action": () => this.copy("node")
-                        },
-                        {
-                            "title": "CONTENT",
-                            "action": () => this.copy("content")
-                        },
-                        {
-                            "title": "AS BASE64",
-                            "action": () => this.copy("base64")
-                        },
-                        {
-                            "title": "AS HEX",
-                            "action": () => this.copy("hex")
-                        }
+                        { "title": "NODE", "action": () => this.copy("node") },
+                        { "title": "CONTENT", "action": () => this.copy("content") },
+                        { "title": "AS BASE64", "action": () => this.copy("base64") },
+                        { "title": "AS HEX", "action": () => this.copy("hex") }
                     ]
                 },
-                {
-                    "title": "DUPLICATE NODE",
-                    "action": () => this.duplicateNode(this.activeNode)
-                },
-                {
-                    "title": "DELETE NODE",
-                    "action": () => this.deleteNode(this.activeNode)
-                },
-                {
-                    "title": "EDIT NODE",
-                    "action": () => { this.showElementMenu = true }
-                },
+                { "title": "DUPLICATE NODE", "action": () => this.duplicateNode(this.activeNode) },
+                { "title": "DELETE NODE", "action": () => this.deleteNode(this.activeNode) },
+                { "title": "EDIT NODE", "action": () => { this.showElementMenu = true } },
                 {
                     "title": "ADD CHILD",
                     "action": () => {
-                        this.parent = this.activeNode.id;
-                        this.activeNode = null;
+                        this.parent = this.activeNode.id
+                        this.activeNode = null
                         this.showElementMenu = true
                     }
                 }
             ]
-        };
+        }
     },
     components: {
         TreeNode,
@@ -286,347 +253,268 @@ export default {
         MenuComponent
     },
     computed: {
-        rpki_types: function () {
+        rpki_types() {
             return ["roa", "mft", "crl", "cer", "asa", "gbr"]
         },
-        object_type: function () {
-            return this.state.infer_object_type()
-        },
-        state: function () {
-            return this.$store.getters.state
-        },
-        tree: function () {
-            return this.$store.getters.tree
-        },
-        tabs: function () {
-            return this.$store.getters.tabs
-        },
-        highlighted: function () {
-            return this.$store.getters.highlighted
+        object_type() {
+            return this.store.state?.infer_object_type() || ''
         },
         currentTab: {
-            get: function () {
-                return this.$store.getters.currentTab
+            get() {
+                return this.store.currentTab
             },
-            set: function (value) {
-                this.$store.commit('tabSelected', value)
+            set(value) {
+                this.store.tabSelected(value)
             }
         },
         flatBytes() {
-            const bytes = [];
-            const root = this.findRoot();
+            const bytes = []
+            const root = this.findRoot()
 
-            if (!root) {
-                return [];
-            }
+            if (!root) return []
 
-            // Recursive function to traverse the node tree
             const traverse = (node) => {
-                // Add tag bytes
                 if (node.tag && node.tag[2]) {
                     node.tag[2].forEach(byte => {
-                        bytes.push({
-                            value: byte,
-                            type: 'tag',
-                            nodeId: node.id
-                        });
-                    });
+                        bytes.push({ value: byte, type: 'tag', nodeId: node.id })
+                    })
                 }
-                // Add length bytes
                 if (node.length && node.length[2]) {
                     node.length[2].forEach(byte => {
-                        bytes.push({
-                            value: byte,
-                            type: 'length',
-                            nodeId: node.id
-                        });
-                    });
+                        bytes.push({ value: byte, type: 'length', nodeId: node.id })
+                    })
                 }
-                // Add content bytes
                 if (node.content && node.content[3]) {
                     node.content[3].forEach(byte => {
-                        bytes.push({
-                            value: byte,
-                            type: 'content',
-                            nodeId: node.id
-                        });
-                    });
+                        bytes.push({ value: byte, type: 'content', nodeId: node.id })
+                    })
                 }
-                // Recurse for children
                 if (node.children) {
                     node.children.forEach(childId => {
-                        const childNode = this.$store.getters.getNodeFromId(childId);
-                        if (childNode) {
-                            traverse(childNode);
-                        }
-                    });
+                        const childNode = this.store.getNodeFromId(childId)
+                        if (childNode) traverse(childNode)
+                    })
                 }
-            };
-
-            traverse(root);
-            return bytes;
-        },
-        highlightedNodeAndDescendants() {
-            const highlightedId = this.$store.getters.highlighted;
-            const highlightSet = new Set();
-            
-            if (highlightedId === null || highlightedId === undefined || highlightedId === -1) {
-                return highlightSet; // Return empty set if nothing is selected
             }
 
-            // Recursive function to add a node and all its children to the set
-            const collectChildren = (nodeId) => {
-                if (highlightSet.has(nodeId)) {
-                    return; // Already processed or invalid
-                }
-                
-                highlightSet.add(nodeId); // Add the node itself
-                
-                const node = this.$store.getters.getNodeFromId(nodeId);
-                
-                if (node && node.children) {
-                    node.children.forEach(childId => {
-                        collectChildren(childId); // Recurse for children
-                    });
-                }
-            };
+            traverse(root)
+            return bytes
+        },
+        highlightedNodeAndDescendants() {
+            const highlightedId = this.store.highlighted
+            const highlightSet = new Set()
+            
+            if (highlightedId === null || highlightedId === undefined || highlightedId === -1) {
+                return highlightSet
+            }
 
-            collectChildren(highlightedId); // Start collection from the highlighted node
-            return highlightSet;
+            const collectChildren = (nodeId) => {
+                if (highlightSet.has(nodeId)) return
+                highlightSet.add(nodeId)
+                
+                const node = this.store.getNodeFromId(nodeId)
+                if (node && node.children) {
+                    node.children.forEach(childId => collectChildren(childId))
+                }
+            }
+
+            collectChildren(highlightedId)
+            return highlightSet
         }
     },
     watch: {
-        highlighted: function (id) {
-            if (!id || !this.$refs.bytes) {
-                return;
-            }
-            const byteContainer = this.$refs.bytes; // This is our .byte-grid-container
-
-            // Find the first span that belongs to this node
-            const targetElement = byteContainer.querySelector(`span[data-node-id="${id}"]`);
+        'store.highlighted'(id) {
+            if (!id || !this.$refs.bytes) return
+            
+            const byteContainer = this.$refs.bytes
+            const targetElement = byteContainer.querySelector(`span[data-node-id="${id}"]`)
 
             if (targetElement) {
-                // Calculate scroll position to center the element
-                const containerHeight = byteContainer.clientHeight;
-                const targetTopRelativeToContainer = targetElement.offsetTop;
-
-                const scrollTop = targetTopRelativeToContainer - (containerHeight / 2) + (targetElement.clientHeight / 2);
+                const containerHeight = byteContainer.clientHeight
+                const targetTopRelativeToContainer = targetElement.offsetTop
+                const scrollTop = targetTopRelativeToContainer - (containerHeight / 2) + (targetElement.clientHeight / 2)
                 
-                byteContainer.scrollTo({
-                    top: scrollTop,
-                    behavior: 'smooth'
-                });
+                byteContainer.scrollTo({ top: scrollTop, behavior: 'smooth' })
             }
         }
     },
     methods: {
         uint8ToBase64(uint8Array) {
-            const base64Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-            let result = '';
-            let i;
+            const base64Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+            let result = ''
 
-            for (i = 0; i < uint8Array.length; i += 3) {
-                const byte1 = uint8Array[i];
-                const byte2 = i + 1 < uint8Array.length ? uint8Array[i + 1] : 0;
-                const byte3 = i + 2 < uint8Array.length ? uint8Array[i + 2] : 0;
+            for (let i = 0; i < uint8Array.length; i += 3) {
+                const byte1 = uint8Array[i]
+                const byte2 = i + 1 < uint8Array.length ? uint8Array[i + 1] : 0
+                const byte3 = i + 2 < uint8Array.length ? uint8Array[i + 2] : 0
+                const triplet = (byte1 << 16) | (byte2 << 8) | byte3
 
-                const triplet = (byte1 << 16) | (byte2 << 8) | byte3;
-
-                result += base64Chars[(triplet >> 18) & 0x3F];
-                result += base64Chars[(triplet >> 12) & 0x3F];
-                result += i + 1 < uint8Array.length ? base64Chars[(triplet >> 6) & 0x3F] : '=';
-                result += i + 2 < uint8Array.length ? base64Chars[triplet & 0x3F] : '=';
+                result += base64Chars[(triplet >> 18) & 0x3F]
+                result += base64Chars[(triplet >> 12) & 0x3F]
+                result += i + 1 < uint8Array.length ? base64Chars[(triplet >> 6) & 0x3F] : '='
+                result += i + 2 < uint8Array.length ? base64Chars[triplet & 0x3F] : '='
             }
 
-            return result;
+            return result
         },
         async runTestCase() {
-            // The file is embedded in a repository and setup to be run on the test backend
-            let z = this.state.repositorify();
+            let z = this.store.state.repositorify()
             const serialized = this.uint8ToBase64(z)
 
             try {
                 const response = await axios.post(this.backendUrl + "execute", serialized, {
-                    headers: {
-                        'Content-Type': 'text/plain'
-                    }
-                });
-                this.showReports = true;
+                    headers: { 'Content-Type': 'text/plain' }
+                })
+                this.showReports = true
 
                 let report = response.data.map(JSON.parse)
-                // Add new report to list of  reports
                 this.reports.push({
-                    name: this.$store.getters.name,
-                    state: this.state.encode_store(),
+                    name: this.store.name,
+                    state: this.store.state.encode_store(),
                     report: report
                 })
                 this.reportTab = this.reports.length - 1
             
             } catch (error) {
-                console.error("Error during test case execution:", error);
-                console.log(serialized);
-                alert("Error during test case execution. Please check the console for details.");
+                console.error("Error during test case execution:", error)
+                console.log(serialized)
+                alert("Error during test case execution. Please check the console for details.")
             }
         },
         openMenu(x, y, id) {
-            // X and Y are the coordinates of the rightclick event
-            // move the activator component to there and click it so that
-            // the context menu opens
-            this.x = x;
-            this.y = y;
+            this.x = x
+            this.y = y
             this.$refs.activator.click()
-            this.activeNode = this.$store.getters.getNodeFromId(id);
+            this.activeNode = this.store.getNodeFromId(id)
         },
-        dec2hex: function (i) {
-            return (i+0x10000).toString(16).substr(-2).toUpperCase();
+        dec2hex(i) {
+            return (i + 0x10000).toString(16).substr(-2).toUpperCase()
         },
         copy(type) {
-            if (type == "node") {
-                this.$store.commit("nodeCopied", this.activeNode)
-            } else if (type == "hex") {
+            if (type === "node") {
+                this.store.copiedCellSet(this.activeNode)
+            } else if (type === "hex") {
                 let array = Array.prototype.concat(this.activeNode.tag[2], this.activeNode.length[2], this.activeNode.content[3])
-                navigator.clipboard.writeText(array.map(this.dec2hex).join(' '));
-            } else if (type == "base64") {
+                navigator.clipboard.writeText(array.map(this.dec2hex).join(' '))
+            } else if (type === "base64") {
                 let array = Array.prototype.concat(this.activeNode.tag[2], this.activeNode.length[2], this.activeNode.content[3])
-                const base64String = this.uint8ToBase64(array);
-                navigator.clipboard.writeText(base64String);
-            } else if (type == "content") {
-                navigator.clipboard.writeText(this.activeNode.content[1]);
+                const base64String = this.uint8ToBase64(array)
+                navigator.clipboard.writeText(base64String)
+            } else if (type === "content") {
+                navigator.clipboard.writeText(this.activeNode.content[1])
             }
         },
         duplicateNode(node) {
-            // Duplicate the selected node and add it as a sibling
-            if (!node) {
-                return
-            }
+            if (!node) return
 
-            this.$store.commit("nodeAdded", {
-                tab: this.$store.state.currentTab,
+            this.store.nodeAdded({
+                tab: this.store.currentTab,
                 tag: node.tag[0],
                 content: node.content[2],
                 parent: node.parent,
                 label: node.label,
-                index: this.$store.getters.getNodeFromId(node.parent).children.indexOf(node.id) + 1
+                index: this.store.getNodeFromId(node.parent).children.indexOf(node.id) + 1
             })
         },
-        deleteNode: function () {
-            // Confirm with user that he actually wants to delete the node
-            confirm("Are you sure you want to delete this node?") && this.$store.commit("nodeRemoved", {
+        deleteNode() {
+            confirm("Are you sure you want to delete this node?") && this.store.nodeRemoved({
                 id: this.activeNode.id,
-                tab: this.$store.state.currentTab
+                tab: this.store.currentTab
             })
         },
-        findRoot: function () {
-            // Identify the root of the tree and start ByteTree and NodeTree from there
-            const candidates = this.tree.filter((node) => node.id == node.parent)
-            if (candidates.length > 0) {
-                return candidates[0]
-            } else {
-                return {
-                    children: []
-                }
-            }
+        findRoot() {
+            const candidates = this.store.tree.filter(node => node.id === node.parent)
+            return candidates.length > 0 ? candidates[0] : { children: [] }
         },
-        download: function (format) {
-            // Download current state in variety of formats
+        download(format) {
             let content = null
-            let fileName = this.$store.getters.name
+            let fileName = this.store.name
             let type = ""
 
             this.loading = true
             switch (format) {
                 case "binary":
-                    content = this.state.export_bin()
+                    content = this.store.state.export_bin()
                     fileName += ".bin"
                     type = "application/octet-stream"
                     break
                 case "base64":
-                    content = this.state.export_base64()
+                    content = this.store.state.export_base64()
                     fileName += ".txt"
                     type = "text/plain"
                     break
                 case "json":
-                    content = this.state.encode_store()
+                    content = this.store.state.encode_store()
                     fileName += ".json"
                     type = "application/json"
                     break
                 case "repository":
-                    content = this.state.repositorify()
+                    content = this.store.state.repositorify()
                     fileName += ".tar.gz"
                     type = "application/x-gzip"
                     break
             }
             
-            // Create a Blob with the content
-            const blob = new Blob([content], { type: type });
+            const blob = new Blob([content], { type: type })
+            const link = document.createElement("a")
+            link.href = URL.createObjectURL(blob)
+            link.download = fileName
             
-            // Create a temporary anchor element
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = fileName;
+            document.body.appendChild(link)
+            link.click()
             
-            // Trigger download by clicking the link
-            document.body.appendChild(link);
-            link.click();
-            
-            // Cleanup
             this.loading = false
-            document.body.removeChild(link);
-            URL.revokeObjectURL(link.href);
+            document.body.removeChild(link)
+            URL.revokeObjectURL(link.href)
         },
-        loadTestCase: function (name, store) {
-            this.$store.dispatch("addTab", name)
-            this.$store.commit("stateSet", {
-                tab: this.$store.getters.currentTab,
-                data: store,
+        loadTestCase(name, storeData) {
+            this.store.addTab(name)
+            this.store.stateSet({
+                tab: this.store.currentTab,
+                data: storeData,
                 type: "json"
-            });
+            })
         },
         handleKeydown(event) {
-            // Key handlers to allow undo and redo using ctrl + z and ctrl + y
             if (event.ctrlKey && event.key === 'z') {
-                this.$store.dispatch('undo')
+                this.store.undo()
             }
             if (event.ctrlKey && event.key === 'y') {
-                this.$store.dispatch('redo')
+                this.store.redo()
             }
-        },
+        }
     },
     async beforeCreate() {
         try {
-            // Probe to see if there is a local backend running
-            await axios.get(local_backend + "probe");
-            this.reachable = true;
+            await axios.get(local_backend + "probe")
+            this.reachable = true
         } catch (error) {
-            console.log("No local backend detected at", local_backend);
+            console.log("No local backend detected at", local_backend)
             try {
-                // If not, try our default backend
-                await axios.get(public_backend + "probe");
-                this.backendUrl = public_backend;
-                this.reachable = true;
+                await axios.get(public_backend + "probe")
+                this.backendUrl = public_backend
+                this.reachable = true
             } catch (error) {
-                console.error("Backend not reachable at", this.backendUrl);
-                this.reachable = false;
+                console.error("Backend not reachable at", this.backendUrl)
+                this.reachable = false
             }
         }
     },
     mounted() {
-        document.title = "Live ASN.1 Editor & Parser | DERP";
-
+        document.title = "Live ASN.1 Editor & Parser | DERP"
         window.addEventListener('keydown', this.handleKeydown)
     },
     beforeUnmount() {
         window.removeEventListener('keydown', this.handleKeydown)
     },
     updated() {
-        // Get position of the byte view so that scrolling works properly
         if (this.$refs.bytes) {
             const byteContainer = this.$refs.bytes
             const containerRect = byteContainer.getBoundingClientRect()
             this.bytesTop = containerRect.top
         }
     }
-};
+}
 </script>
 
 <style>
@@ -637,7 +525,6 @@ export default {
 .label {
     color: #E63946;
     font-weight: bold;
-
 }
 
 .length {
@@ -645,21 +532,21 @@ export default {
 }
 
 .content {
-    color: rgb(var(--v-theme-content));;
+    color: rgb(var(--v-theme-content));
     font-weight: bold;
 }
 
 .table-bordered-centered {
-  border-collapse: collapse;
-  width: 100%;
+    border-collapse: collapse;
+    width: 100%;
 }
 
 .table-bordered-centered th,
 .table-bordered-centered td {
-  border: 1px solid #000;
-  text-align: center;
-  vertical-align: middle;
-  padding: 8px;
+    border: 1px solid #000;
+    text-align: center;
+    vertical-align: middle;
+    padding: 8px;
 }
 
 .crashed {
@@ -671,13 +558,12 @@ export default {
     color: red;
 }
 
-/* This is the scrolling container, no changes here */
 .byte-grid-container {
     height: 84vh;
     font-family: monospace;
     font-size: 1rem;
     padding: 10px;
-    overflow: scroll; 
+    overflow: scroll;
     position: sticky;
     border: 1px solid #ccc;
     box-sizing: border-box;
@@ -688,37 +574,27 @@ export default {
     grid-template-columns: repeat(16, minmax(min-content, 1fr));
 }
 
-/* This styles the individual byte spans */
 .byte-grid > span {
     display: inline-block;
     text-align: center;
-    /* This creates a 0.05em padding on each side,
-       totaling a 0.1em gap between bytes. */
-    padding: 0.01em; 
+    padding: 0.01em;
     cursor: pointer;
     white-space: nowrap;
 }
 
-/* This selector finds the 9th child of every 16-byte group
-  (e.g., 9th, 25th, 41st...)
-*/
 .byte-grid > span:nth-child(16n + 9) {
-    /* We add the 0.6em gap as padding.
-       (0.65em = 0.6em main gap + 0.05em base padding) */
-    padding-left: 0.65em; 
+    padding-left: 0.65em;
 }
 
-/* Highlight style remains the same */
 .highlighted {
     background-color: gray;
     font-weight: bold;
 }
 
-/* Media query remains the same */
 @media (max-width: 960px) {
-  .asn-tree, .byte-grid-container {
-    height: 50vh; 
-  }
+    .asn-tree, .byte-grid-container {
+        height: 50vh;
+    }
 }
 
 .asn-tree {
@@ -730,14 +606,13 @@ export default {
 }
 
 .v-overlay {
-    align-items: center; 
+    align-items: center;
     justify-content: center;
 }
 
-/* Add this media query for mobile screens */
-@media (max-width: 960px) { /* 960px is Vuetify's 'md' breakpoint */
-  .asn-tree, .bytes {
-    height: 50vh; /* Reduce height on mobile to prevent excessive scrolling inside the element */
-  }
+@media (max-width: 960px) {
+    .asn-tree, .bytes {
+        height: 50vh;
+    }
 }
 </style>

@@ -5,8 +5,8 @@
         @contextmenu.stop="openMenu"
         @touchstart.stop="handleTouchStart"
         @touchend.stop="handleTouchEnd"
-        @mouseover.stop="$store.commit('elementHighlighted', node.id)"
-        @mouseleave.stop="$store.commit('elementHighlighted', -1)"
+        @mouseover.stop="store.elementHighlighted(node.id)"
+        @mouseleave.stop="store.elementHighlighted(-1)"
         @dragstart.stop="onDragStart"
         @dragend.stop="onDragEnd"
     >
@@ -19,7 +19,7 @@
         >
             <span v-if="hasChildren || isConstructed" class="toggle-icon">{{ isExpanded ? "▼" : "▶" }}</span>
             <span v-if="node.tag && !simplify" class="node-tag tag" ref="tag">{{ node.tag[1] }}</span>
-            <span v-if="node.label " class="node-label label" ref="label">{{ node.label }}</span>
+            <span v-if="node.label" class="node-label label" ref="label">{{ node.label }}</span>
             <span v-if="node.length && !simplify" class="node-length length" ref="length">{{ node.length[1] }}</span>
             <span v-if="node.content && !expandedContent" class="node-content content" ref="content">
                 <span v-if="node.content[1].length > 40" @click.stop="expandedContent = true">
@@ -43,7 +43,7 @@
 
             <div v-for="(child, index) in node.children" :key="child.id || index">
                 <TreeNode 
-                    :node="$store.getters.getNodeFromId(child)" 
+                    :node="store.getNodeFromId(child)" 
                     @highlight="(id) => $emit('highlight', id)"
                     @rightclick="(x, y, id) => $emit('rightclick', x, y, id)"
                     :simplify="simplify"
@@ -61,14 +61,15 @@
 </template>
 
 <script>
-import { useDisplay } from 'vuetify';
+import { useDisplay } from 'vuetify'
+import { useTabsStore } from '@/stores/tabs'
 
 export default {
-    // ... (props, emits, data are unchanged) ...
     setup() {
         const { mobile } = useDisplay()
+        const store = useTabsStore()
 
-        return { isMobile: mobile }
+        return { isMobile: mobile, store }
     },
     props: {
         node: Object,
@@ -78,95 +79,79 @@ export default {
     data() {
         return {
             expandedContent: false
-        };
+        }
     },
     computed: {
         showDropZones() {
-            return this.$store.getters.isDragging /* && 
-                   (this.$store.getters.activeDropContextId === this.node.id ||
-                   this.$store.getters.activeDropContextId === this.node.parent)*/
+            return this.store.isDragging
         },
         hasChildren() {
-            return this.node.children && this.node.children.length > 0;
+            return this.node.children && this.node.children.length > 0
         },
         isConstructed() {
-            return this.node.tag[0] == 48 || this.node.tag[0] == 49;
+            return this.node.tag[0] == 48 || this.node.tag[0] == 49
         },
         isExpanded() {
-            return this.$store.getters.isExpanded(this.node.id);
-        },
+            return this.store.isExpanded(this.node.id)
+        }
     },
-    // ... (mounted is unchanged) ...
-    mounted: function () {
+    mounted() {
         if (this.node.children.length < 2) {
             this.toggleExpand(true)
         }
     },
     methods: {
-        // ... (handleTouchStart, handleTouchEnd, openMenu are unchanged) ...
-        openMenu (event) {
-            event.preventDefault();
-            const clientX = event.touches ? event.touches[0].clientX : event.clientX;
-            const clientY = event.touches ? event.touches[0].clientY : event.clientY;
-            this.$emit("rightclick", clientX, clientY, this.node.id);
+        openMenu(event) {
+            event.preventDefault()
+            const clientX = event.touches ? event.touches[0].clientX : event.clientX
+            const clientY = event.touches ? event.touches[0].clientY : event.clientY
+            this.$emit("rightclick", clientX, clientY, this.node.id)
         },
         onDragStart(event) {
-            event.dataTransfer.effectAllowed = 'move';
-            event.target.style.opacity = "0.4";
-            this.$store.commit("draggingSet", true);
-            this.$store.commit("draggedNodeIdSet", this.node.id);
+            event.dataTransfer.effectAllowed = 'move'
+            event.target.style.opacity = "0.4"
+            this.store.draggingSet(true)
+            this.store.draggedNodeIdSet(this.node.id)
         },
         onDragEnd(event) {
-            event.target.style.opacity = ""; 
-            const target = this.$store.getters.target;
+            event.target.style.opacity = ""
+            const target = this.store.target
+            const draggedId = this.store.draggedNodeId
             
-            const draggedId = this.$store.getters.draggedNodeId;
-            
-            // Ensure valid drop: not dropping onto itself or its own descendant
-            if ((target[0] !== -1) && (target[0] != this.node.id) && !this.$store.getters.isDescendant(draggedId, target[0])) {
-                this.$store.commit("nodeMoved", {
-                    tab: this.$store.state.currentTab,
+            if ((target[0] !== -1) && (target[0] != this.node.id) && !this.store.isDescendant(draggedId, target[0])) {
+                this.store.nodeMoved({
+                    tab: this.store.currentTab,
                     id: this.node.id,
                     target: target[0],
                     index: target[1]
                 })
             }
-            // Reset all drag-related state
-            this.$store.commit("dragTargetSet", -1);
-            this.$store.commit("draggingSet", false);
-            this.$store.commit("draggedNodeIdSet", null);
-            this.$store.commit("activeDropContextSet", null); // Reset context
+            
+            this.store.dragTargetSet(-1)
+            this.store.draggingSet(false)
+            this.store.draggedNodeIdSet(null)
+            this.store.activeDropContextSet(null)
         },
         onDragOver(event, index, isDropZone = false) {
-            // Find this node's parent and set IT as the active context.
-            // If it has no parent (is a root node), its own drop zones will appear.
-            const parentId = this.node.parent;
-            this.$store.commit("activeDropContextSet", isDropZone ? this.node.id : parentId || this.node.id);
-            // --- END: CORE LOGIC CHANGE ---
-
-            /*if (!this.isExpanded) {
-                this.$store.commit("expandedSet", { id: this.node.id, expanded: true });
-            }*/
-            
-            // Set the specific target for dropping INTO this node
-            this.$store.commit("dragTargetSet", [this.node.id, index]);
+            const parentId = this.node.parent
+            this.store.activeDropContextSet(isDropZone ? this.node.id : parentId || this.node.id)
+            this.store.dragTargetSet([this.node.id, index])
         },
         onDragLeave() {
-            // No changes needed here, but kept for clarity
-            this.$store.commit("dragTargetSet", [-1, -1]);
+            this.store.dragTargetSet([-1, -1])
         },
         isDragOver(index) {
-            const target = this.$store.getters.target;
-            return target && target[0] === this.node.id && target[1] === index;
+            const target = this.store.target
+            return target && target[0] === this.node.id && target[1] === index
         },
         toggleExpand(value = null) {
-            this.$store.commit("expandedSet", {
+            this.store.expandedSet({
                 id: this.node.id,
                 expanded: value !== null ? value : !this.isExpanded
-            });
+            })
         }
-    },
-};
+    }
+}
 </script>
 
 <style scoped>
@@ -174,9 +159,8 @@ export default {
     padding-left: 20px;
 }
 
-/* New/Updated Styles for Drop Zones */
 .drop-zone {
-    height: 5px; /* Small, invisible target area */
+    height: 5px;
     border: 1px dashed rgba(0, 0, 0, 0.5);
 }
 
@@ -205,7 +189,7 @@ export default {
 }
 
 .node-header.dragover {
-    background-color: rgba(255, 255, 0, 0.2); /* Highlight header for append drop */
+    background-color: rgba(255, 255, 0, 0.2);
 }
 
 .toggle-icon {
