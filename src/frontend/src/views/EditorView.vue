@@ -4,7 +4,7 @@
     </v-overlay>
 
     <v-overlay v-model="load">
-        <UploadCard @upload="load = false"></UploadCard>
+        <UploadCard @upload="load = false" @report-loaded="handleReportLoaded"></UploadCard>
     </v-overlay>
 
     <v-overlay v-model="showElementMenu">
@@ -76,6 +76,10 @@
             <v-divider></v-divider>
             <v-card-actions class="pa-4">
                 <v-spacer></v-spacer>
+                <v-btn @click="downloadReport(reports[reportTab])" color="secondary" variant="tonal" :size="isMobile ? 'small' : 'default'">
+                    <v-icon start>mdi-download</v-icon>
+                    Download Report
+                </v-btn>
                 <v-btn @click="loadTestCase(reports[reportTab].name, reports[reportTab].state)" color="primary" variant="tonal" :size="isMobile ? 'small' : 'default'">Load Test Case</v-btn>
                 <v-btn @click="showReports = false" color="grey" variant="tonal" :size="isMobile ? 'small' : 'default'">Close</v-btn>
             </v-card-actions>
@@ -241,7 +245,7 @@
             </v-col>
         </v-row>
         <v-row v-if="store.tabs.length === 0">
-            <UploadCard></UploadCard>
+            <UploadCard @report-loaded="handleReportLoaded"></UploadCard>
         </v-row>
     </v-container>
 </template>
@@ -611,6 +615,34 @@ export default {
             document.body.removeChild(link)
             URL.revokeObjectURL(link.href)
         },
+        downloadReport(report) {
+            // Create a comprehensive report file that includes both the report data
+            // and the ASN.1 object state for re-importing
+            const exportData = {
+                version: "1.0",
+                exportedAt: new Date().toISOString(),
+                name: report.name,
+                // The state is the encoded ASN.1 object that can be loaded via stateSet with type: "json"
+                state: report.state,
+                // The report contains the test results from CURE
+                report: report.report
+            }
+
+            const content = JSON.stringify(exportData, null, 2)
+            const fileName = `${report.name.replace(/[^a-zA-Z0-9_-]/g, '_')}_report.json`
+            const type = "application/json"
+
+            const blob = new Blob([content], { type: type })
+            const link = document.createElement("a")
+            link.href = URL.createObjectURL(blob)
+            link.download = fileName
+
+            document.body.appendChild(link)
+            link.click()
+
+            document.body.removeChild(link)
+            URL.revokeObjectURL(link.href)
+        },
         loadTestCase(name, storeData) {
             this.store.addTab(name)
             this.store.stateSet({
@@ -618,6 +650,16 @@ export default {
                 data: storeData,
                 type: "json"
             })
+        },
+        handleReportLoaded(reportData) {
+            // Add the loaded report to the reports array
+            this.reports.push({
+                name: reportData.name,
+                state: reportData.state,
+                report: reportData.report
+            })
+            // Set the report tab to the newly loaded report
+            this.reportTab = this.reports.length - 1
         },
         handleKeydown(event) {
             if (event.ctrlKey && event.key === 'z') {

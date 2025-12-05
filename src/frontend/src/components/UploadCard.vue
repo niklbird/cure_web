@@ -15,6 +15,32 @@
             </v-card>
         </v-dialog>
 
+        <!-- Dialog to show report info when loading a report file -->
+        <v-dialog v-model="reportDialog" max-width="500">
+            <v-card class="report-dialog">
+                <v-card-title class="text-h6">
+                    <v-icon start>mdi-file-document-outline</v-icon>
+                    Report File Detected
+                </v-card-title>
+                <v-card-text class="text-body-1">
+                    <p>This file contains a saved report with an ASN.1 object.</p>
+                    <v-divider class="my-3"></v-divider>
+                    <div class="report-info">
+                        <div><strong>Name:</strong> {{ reportInfo.name }}</div>
+                        <div><strong>Exported:</strong> {{ reportInfo.exportedAt }}</div>
+                        <div><strong>Test Results:</strong> {{ reportInfo.resultCount }} RP(s) tested</div>
+                    </div>
+                </v-card-text>
+                <v-card-actions class="justify-end pa-4">
+                    <v-btn variant="tonal" @click="reportDialog = false">Cancel</v-btn>
+                    <v-btn variant="flat" color="primary" @click="loadReportObject(true)">
+                        <v-icon start>mdi-plus</v-icon>
+                        Load in New Tab
+                    </v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
+
         <v-card class="upload-card" elevation="0">
             <!-- Tab Navigation -->
             <v-tabs v-model="activeTab" color="primary" class="upload-tabs">
@@ -79,7 +105,7 @@
                         </div>
 
                         <div class="drop-zone__hint">
-                            Supports DER, PEM, Base64, and JSON files
+                            Supports DER, PEM, Base64, JSON, and Report files
                         </div>
                     </div>
                 </v-window-item>
@@ -152,6 +178,13 @@ export default {
             pastedContent: '',
             dragOver: false,
             dialog: false,
+            reportDialog: false,
+            reportData: null,
+            reportInfo: {
+                name: '',
+                exportedAt: '',
+                resultCount: 0
+            },
             examples: [
                 { type: 'roa', label: 'ROA', icon: 'mdi-shield-check-outline' },
                 { type: 'mft', label: 'Manifest', icon: 'mdi-format-list-checks' },
@@ -163,7 +196,7 @@ export default {
             ]
         }
     },
-    emits: ['upload'],
+    emits: ['upload', 'reportLoaded'],
     methods: {
         loadExample(type) {
             this.store.addTab(type + '_example')
@@ -191,12 +224,68 @@ export default {
             this.clearFile()
             this.$emit('upload')
         },
+        // Check if a JSON file is a report file
+        isReportFile(jsonData) {
+            try {
+                const parsed = JSON.parse(jsonData)
+                // Check for report file structure: has version, state, and report fields
+                return parsed.version && parsed.state && parsed.report && Array.isArray(parsed.report)
+            } catch {
+                return false
+            }
+        },
+        // Load the ASN.1 object from a report file
+        loadReportObject(newTab) {
+            this.reportDialog = false
+            
+            if (!this.reportData) return
+
+            const tabName = this.reportData.name || 'Loaded from Report'
+
+            if (newTab) {
+                this.store.addTab(tabName)
+            }
+
+            // The state in the report is in the same format as regular JSON exports
+            this.store.stateSet({
+                tab: this.store.currentTab,
+                data: this.reportData.state,
+                type: 'json'
+            })
+
+            // Emit the report data so the parent can add it to the reports array
+            this.$emit('reportLoaded', {
+                name: this.reportData.name,
+                state: this.reportData.state,
+                report: this.reportData.report
+            })
+
+            this.reportData = null
+            this.clearFile()
+            this.$emit('upload')
+        },
         async processFile(file) {
             this.file = file
 
             try {
                 if (file.name.endsWith('.json')) {
-                    this.data = await file.text()
+                    const jsonText = await file.text()
+                    
+                    // Check if this is a report file
+                    if (this.isReportFile(jsonText)) {
+                        const parsed = JSON.parse(jsonText)
+                        this.reportData = parsed
+                        this.reportInfo = {
+                            name: parsed.name || 'Unknown',
+                            exportedAt: parsed.exportedAt ? new Date(parsed.exportedAt).toLocaleString() : 'Unknown',
+                            resultCount: parsed.report ? parsed.report.length : 0
+                        }
+                        this.reportDialog = true
+                        return
+                    }
+                    
+                    // Regular JSON file
+                    this.data = jsonText
                 } else {
                     try {
                         const decoder = new TextDecoder('utf-8', { fatal: true })
@@ -223,6 +312,7 @@ export default {
         clearFile() {
             this.file = null
             this.data = null
+            this.reportData = null
             if (this.$refs.fileInput) {
                 this.$refs.fileInput.value = ''
             }
@@ -233,6 +323,11 @@ export default {
 
             for (const file of files) {
                 await this.processFile(file)
+
+                // If it's a report file, the dialog will be shown by processFile
+                if (this.reportDialog) {
+                    continue
+                }
 
                 if (multiple || this.store.tabs.length === 0) {
                     this.open(true)
@@ -248,6 +343,11 @@ export default {
 
             for (const file of files) {
                 await this.processFile(file)
+
+                // If it's a report file, the dialog will be shown by processFile
+                if (this.reportDialog) {
+                    continue
+                }
 
                 if (multiple || this.store.tabs.length === 0) {
                     this.open(true)
@@ -411,6 +511,17 @@ export default {
     color: rgba(var(--v-theme-on-surface), 0.5);
     padding: 0 20px 20px;
     margin: 0;
+}
+
+/* Report dialog styles */
+.report-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.report-info div {
+    font-size: 0.95rem;
 }
 
 /* Responsive adjustments */
