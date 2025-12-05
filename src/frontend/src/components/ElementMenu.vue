@@ -76,7 +76,7 @@
                 <v-row v-if="tag != null && tag != 48 && tag != 49" class="align-center">
                     <v-col>
                         <v-text-field
-                            v-if="types[tag]['completions'].length == 0"
+                            v-if="!hasCompletions"
                             v-model="content"
                             label="Content"
                             :placeholder="types[tag]['example']"
@@ -87,7 +87,7 @@
                             v-else
                             v-model="content"
                             label="Content"
-                            :completions="types[tag]['completions']"
+                            :completions="currentCompletions"
                         ></AutoComplete>
                     </v-col>
                     <v-col cols="auto" class="d-flex">
@@ -183,7 +183,8 @@ export default {
             timeTypes: TIME_TYPES,
             pick: false,
             date: new Date(),
-            time: new Date().toLocaleTimeString('en-GB')
+            time: new Date().toLocaleTimeString('en-GB'),
+            oidCompletions: []
         }
     },
     computed: {
@@ -192,9 +193,55 @@ export default {
                 title: value.name,
                 value: key
             }))
+        },
+        // Check if the current tag type has completions available
+        hasCompletions() {
+            if (this.tag == null) return false
+            // Tag 6 is OBJECT IDENTIFIER - use OID completions from WASM
+            if (this.tag == 6) return this.oidCompletions.length > 0
+            // For other types, check static completions
+            return this.types[this.tag]['completions'].length > 0
+        },
+        // Get the appropriate completions for the current tag
+        currentCompletions() {
+            if (this.tag == null) return []
+            // Tag 6 is OBJECT IDENTIFIER - return OID completions
+            if (this.tag == 6) return this.oidCompletions
+            // For other types, return static completions
+            return this.types[this.tag]['completions']
         }
     },
+    mounted() {
+        this.loadOidCompletions()
+    },
     methods: {
+        loadOidCompletions() {
+            try {
+                if (this.store.state) {
+                    const oidsJson = this.store.state.get_all_oids()
+                    const oids = JSON.parse(oidsJson)
+                    // Format OIDs for the autocomplete
+                    // The result might be an array of OID strings or objects with oid/name pairs
+                    if (Array.isArray(oids)) {
+                        this.oidCompletions = oids.map(oid => {
+                            if (typeof oid === 'string') {
+                                return oid
+                            } else if (typeof oid === 'object' && oid !== null) {
+                                // If it's an object with name and oid, format as "name (oid)"
+                                if (oid.name && oid.oid) {
+                                    return `${oid.oid} - ${oid.name}`
+                                }
+                                return oid.oid || String(oid)
+                            }
+                            return String(oid)
+                        })
+                    }
+                }
+            } catch (e) {
+                console.warn('Could not load OID completions:', e)
+                this.oidCompletions = []
+            }
+        },
         translate(value) {
             let bytes
             if (typeof value === 'string') {
@@ -261,6 +308,12 @@ export default {
         verifyContent() {
             if (this.content === "" || this.content === null) return true
             if (this.tag === null) return false
+            
+            // For OIDs, extract just the OID part if user selected a formatted completion
+            if (this.tag == 6 && this.content.includes(' - ')) {
+                this.content = this.content.split(' - ')[0].trim()
+            }
+            
             if (ASN1_TYPES[this.tag].rules(this.content)) return true
             if (ASN1_TYPES[this.tag].transform) {
                 const regex = ASN1_TYPES[this.tag].transform.regex
