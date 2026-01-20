@@ -10,6 +10,13 @@
     <v-overlay v-model="showElementMenu">
         <ElementMenu :parent="parent" :node="activeNode" @close="showElementMenu = false"></ElementMenu>
     </v-overlay>
+    <v-overlay v-model="showKeyLoader">
+        <KeyLoader
+            :store="store"
+            :activeNode="activeNode"
+            @close="showKeyLoader = false"
+        />
+    </v-overlay>
 
     <v-overlay v-model="showReports">
         <v-card :width="isMobile ? '95vw' : '70vw'" :height="isMobile ? '90vh' : '70vh'" class="d-flex flex-column">
@@ -159,6 +166,12 @@
                     SHARE
                 </v-btn>
             </v-col>
+            <v-col cols="12" sm="auto" v-if="store.tree.length > 0">
+                <v-btn color="primary" @click="showKeyLoader = true" :block="isMobile">
+                    <v-icon start>mdi-key-variant</v-icon>
+                    KEY LOADER
+                </v-btn>
+            </v-col>
             <v-col cols="12" sm="auto" v-if="store.tree.length > 0 && reachable && rpki_types.includes(object_type)">
                 <v-btn color="primary" @click="runTestCase" :block="isMobile">
                     RUN TEST CASE WITH CURE
@@ -258,6 +271,7 @@ import MenuComponent from '@/components/MenuComponent.vue'
 import axios from 'axios'
 import { useDisplay } from 'vuetify'
 import { useTabsStore } from '@/stores/tabs'
+import KeyLoader from '@/components/KeyLoader.vue'
 
 const public_backend = "https://api.asn1.app/"
 const local_backend = "http://localhost:21999/"
@@ -290,6 +304,7 @@ export default {
             shareUrl: '',
             shareUrlTooLong: false,
             copied: false,
+            showKeyLoader: false,
             context_items: [
                 {
                     "title": "COPY ...",
@@ -318,7 +333,8 @@ export default {
         TreeNode,
         UploadCard,
         ElementMenu,
-        MenuComponent
+        MenuComponent,
+        KeyLoader
     },
     computed: {
         rpki_types() {
@@ -390,18 +406,24 @@ export default {
             return highlightSet
         }
     },
-    watch: {
+        watch: {
         'store.highlighted'(id) {
-            if (!id || !this.$refs.bytes) return
+            if (id === null || id === undefined || id === -1) return
+
             
+            this.activeNode = this.store.getNodeFromId(id)
+
+            if (!this.$refs.bytes) return
+
             const byteContainer = this.$refs.bytes
             const targetElement = byteContainer.querySelector(`span[data-node-id="${id}"]`)
 
             if (targetElement) {
                 const containerHeight = byteContainer.clientHeight
                 const targetTopRelativeToContainer = targetElement.offsetTop
-                const scrollTop = targetTopRelativeToContainer - (containerHeight / 2) + (targetElement.clientHeight / 2)
-                
+                const scrollTop =
+                    targetTopRelativeToContainer - (containerHeight / 2) + (targetElement.clientHeight / 2)
+
                 byteContainer.scrollTo({ top: scrollTop, behavior: 'smooth' })
             }
         }
@@ -533,6 +555,7 @@ export default {
             this.x = x
             this.y = y
             this.$refs.activator.click()
+            this.store.elementHighlighted(id)
             this.activeNode = this.store.getNodeFromId(id)
         },
         dec2hex(i) {
