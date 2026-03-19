@@ -1,0 +1,6 @@
+[submodule "wasm/cure_asn1"]
+	path = wasm/cure_asn1
+	url = https://github.com/niklbird/cure_asn1
+[submodule "wasm/cure_pp"]
+	path = wasm/cure_pp
+	url = https://github.com/niklbird/cure_pp
