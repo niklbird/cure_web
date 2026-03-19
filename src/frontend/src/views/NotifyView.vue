@@ -1,47 +1,5 @@
 <template>
   <v-container fluid class="notify-dashboard pa-4 pa-md-6">
-    <!-- Registration Modal -->
-    <v-dialog v-model="showRegistration" max-width="500">
-      <v-card class="registration-card">
-        <v-card-title class="d-flex align-center justify-space-between">
-          <span>Register for Updates</span>
-          <v-btn icon="mdi-close" variant="text" size="small" @click="showRegistration = false" />
-        </v-card-title>
-        <v-divider />
-        <v-card-text class="pt-6">
-          <v-text-field
-            v-model="registrationForm.repositoryUri"
-            label="Repository URI"
-            placeholder="rsync://rpki.example.com/repository/"
-            variant="outlined"
-            density="comfortable"
-            :error-messages="registrationErrors.repositoryUri"
-            class="mb-4"
-          />
-          <v-text-field
-            v-model="registrationForm.email"
-            label="Email"
-            placeholder="you@example.com"
-            type="email"
-            variant="outlined"
-            density="comfortable"
-            :error-messages="registrationErrors.email"
-          />
-        </v-card-text>
-        <v-card-actions class="pa-4 pt-0">
-          <v-spacer />
-          <v-btn variant="tonal" @click="showRegistration = false">Cancel</v-btn>
-          <v-btn
-            color="primary"
-            variant="flat"
-            :loading="registering"
-            @click="submitRegistration"
-          >
-            Register
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
 
     <!-- Loading State -->
     <div v-if="loading" class="d-flex justify-center align-center" style="min-height: 60vh;">
@@ -69,15 +27,6 @@
 
     <!-- Dashboard Content -->
     <template v-else>
-      <!-- Header Bar -->
-      <div class="d-flex flex-wrap align-center justify-space-between mb-6 ga-4">
-        <h1 class="text-h4 font-weight-bold">RPKI Dashboard</h1>
-        <v-btn color="primary" variant="flat" @click="showRegistration = true">
-          <v-icon start>mdi-bell-outline</v-icon>
-          Notify me!
-        </v-btn>
-      </div>
-
       <!-- Summary Bar -->
       <v-card class="mb-6" variant="outlined">
         <v-card-text>
@@ -352,42 +301,6 @@
             </v-card-text>
           </v-card>
         </v-col>
-
-        <!-- Code and Data -->
-        <v-col cols="12" lg="4">
-          <v-card class="fill-height dashboard-tile" variant="outlined">
-            <v-card-title>Code and Data</v-card-title>
-            <v-divider />
-            <v-card-text>
-              <p class="text-body-2 mb-4">
-                Download the manually created test cases for RP implementations as well as the repository crawler:
-              </p>
-              <v-btn
-                variant="flat"
-                color="primary"
-                href="static/crawler_and_tests.zip"
-                class="mb-6"
-              >
-                <v-icon start>mdi-download</v-icon>
-                Download test cases
-              </v-btn>
-
-              <p class="text-body-2 mb-4">
-                The source code for our automated RFC analysis tooling can be downloaded and explored in browser:
-              </p>
-              <div class="d-flex flex-wrap ga-3">
-                <v-btn variant="flat" color="primary" href="static/rfc-tool.zip">
-                  <v-icon start>mdi-download</v-icon>
-                  Download code
-                </v-btn>
-                <v-btn variant="outlined" color="primary" href="static/rfc-analysis">
-                  <v-icon start>mdi-open-in-new</v-icon>
-                  Explore in browser
-                </v-btn>
-              </div>
-            </v-card-text>
-          </v-card>
-        </v-col>
       </v-row>
     </template>
   </v-container>
@@ -458,14 +371,6 @@ const loading = ref(true)
 const error = ref<string | null>(null)
 const report = ref<ReportData | null>(null)
 
-// Registration
-const showRegistration = ref(false)
-const registering = ref(false)
-const registrationForm = ref({
-  repositoryUri: '',
-  email: ''
-})
-const registrationErrors = ref<Record<string, string>>({})
 
 // RP Logs
 const activeRpLogTab = ref<string>('')
@@ -580,36 +485,6 @@ async function fetchReport() {
   }
 }
 
-async function submitRegistration() {
-  registrationErrors.value = {}
-  const { repositoryUri, email } = registrationForm.value
-
-  if (!repositoryUri.trim()) {
-    registrationErrors.value.repositoryUri = 'Repository URI is required.'
-  }
-  if (!email.trim() || !email.includes('@')) {
-    registrationErrors.value.email = 'A valid email is required.'
-  }
-  if (Object.keys(registrationErrors.value).length) return
-
-  registering.value = true
-  try {
-    await axios.post(`${BACKEND_URL}/register/`, {
-      repository_uri: repositoryUri,
-      email
-    })
-    showRegistration.value = false
-    registrationForm.value = { repositoryUri: '', email: '' }
-  } catch (e: any) {
-    if (e?.response?.data) {
-      registrationErrors.value = e.response.data
-    } else {
-      registrationErrors.value.email = 'Registration failed. Please try again.'
-    }
-  } finally {
-    registering.value = false
-  }
-}
 
 function renderChart() {
   if (!reachabilityChartCanvas.value || !report.value) return
