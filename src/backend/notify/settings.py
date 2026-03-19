@@ -21,14 +21,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'qv!%=+xdm3qdu0xfh--ej#n8!koq)1_6z1v9!r_2g+0o9x%8@k'
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False 
-
-ALLOWED_HOSTS = ["217.154.228.27", "rpki-notify.site", "localhost", "127.0.0.1"]
-CSRF_TRUSTED_ORIGINS = ['https://rpki-notify.site', 'https://www.rpki-notify.site']
-
-
-STATIC_ROOT = "/var/www/rpki-notify/static"
 STATIC_URL = "/static/"
 # Application definition
 
@@ -75,17 +67,6 @@ TEMPLATES = [
 WSGI_APPLICATION = 'notify.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/5.1/ref/settings/#databases
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
-
-
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
 
@@ -126,3 +107,27 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+import os
+ 
+# Override database location so it persists on the Docker volume
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.environ.get('DATABASE_PATH', '/app/data/db.sqlite3'),
+    }
+}
+ 
+DEBUG = os.environ.get('DJANGO_DEBUG', '0') == '1'
+ 
+ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '*').split(',')
+ 
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get('CSRF_TRUSTED_ORIGINS', 'http://localhost:8080').split(',')
+]
+ 
+STATIC_ROOT = '/app/staticfiles'
+
+# Path where report JSON files are stored
+DATA_FOLDER = os.environ.get('DATA_FOLDER', '/app/data/reports')
