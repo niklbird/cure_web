@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import EditorView from '../views/EditorView.vue';
 import AboutView from '../views/AboutView.vue';
+import NotifyView from '../views/NotifyView.vue';
 
 const routes = [
   {
@@ -10,14 +11,17 @@ const routes = [
   },
   {
     path: '/editor',
-    // This is a redirect. If anyone lands on /editor,
-    // send them to the homepage / which is also the editor.
-    redirect: '/' 
+    redirect: '/'
   },
   {
     path: '/about',
     name: 'About',
     component: AboutView
+  },
+  {
+    path: '/notify',
+    name: 'Notify',
+    component: NotifyView
   }
 ];
 

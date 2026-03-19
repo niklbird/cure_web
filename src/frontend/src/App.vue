@@ -6,7 +6,7 @@
             <v-app-bar-title>
                 <div class="d-flex align-center" style="gap: 12px;">
                     <img :src="logo" alt="Logo" height="32"/>
-                    <span class="logo-text">{{ $route.path === '/about' ? "DERP" : "CURE" }}</span>
+                    <span class="logo-text">{{ logoText }}</span>
                 </div>
             </v-app-bar-title>
 
@@ -16,6 +16,12 @@
                     :variant="$route.path === '/' ? 'outlined' : 'text'"
                 >
                     EDITOR
+                </v-btn>
+                <v-btn 
+                    to="/notify"
+                    :variant="$route.path === '/notify' ? 'outlined' : 'text'"
+                >
+                    NOTIFY
                 </v-btn>
                 <v-btn 
                     to="/about"
@@ -39,6 +45,11 @@
                 <v-list-item
                     to="/"
                     title="EDITOR"
+                    @click="drawer = false"
+                ></v-list-item>
+                <v-list-item
+                    to="/notify"
+                    title="NOTIFY"
                     @click="drawer = false"
                 ></v-list-item>
                 <v-list-item
@@ -74,12 +85,18 @@ export default {
             drawer: false,
             mode: "light"
         };
+    },
+    computed: {
+        logoText() {
+            if (this.$route.path === '/about') return 'DERP'
+            if (this.$route.path === '/notify') return 'RPKI Notify'
+            return 'CURE'
+        }
     }
 };
 </script>
 
 <style>
-/* Most of the custom CSS is no longer needed! */
 #app {
     font-family: Avenir, Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -90,7 +107,7 @@ export default {
     font-family: 'Montserrat', sans-serif;
     font-size: 24px;
     font-weight: 700;
-    color: rgb(var(--v-theme-primary)); /* Uses Vuetify's primary theme color */
+    color: rgb(var(--v-theme-primary));
     line-height: 1;
 }
 </style>
