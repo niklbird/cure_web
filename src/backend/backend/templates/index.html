@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RPKI Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --text-color: #333;
+            --text-color-light: #666;
+            --header-color: #2c3e50;
+            --card-bg: #ffffff;
+            --card-shadow: rgba(0, 0, 0, 0.05);
+            --card-hover-shadow: rgba(0, 0, 0, 0.1);
+            --border-color: #e0e0e0;
+            --button-bg: #3498db;
+            --button-hover-bg: #2980b9;
+            --navbar-bg: #ffffff;
+            --navbar-text: #2c3e50;
+            --icon-color: #555;
+            --icon-hover-color: #3498db;
+            --chart-color-1: #4CAF50;
+            --chart-color-2: #FFC107;
+            --chart-color-3: #F44336;
+            --chart-color-4: #2196F3;
+            --chart-text-color: #333;
+            --scrollbar-thumb: #ccc;
+            --scrollbar-track: #f1f1f1;
+            --tooltip-bg: #333;
+            --tooltip-text: #fff;
+        }
+
+        body.dark-mode {
+            --bg-color: #2c3e50;
+            --text-color: #ecf0f1;
+            --text-color-light: #bdc3c7;
+            --header-color: #ecf0f1;
+            --card-bg: #34495e;
+            --card-shadow: rgba(0, 0, 0, 0.2);
+            --card-hover-shadow: rgba(0, 0, 0, 0.3);
+            --border-color: #4a6a8a;
+            --navbar-bg: #2c3e50;
+            --navbar-text: #ecf0f1;
+            --icon-color: #ecf0f1;
+            --icon-hover-color: #8fd2f9;
+            --chart-color-1: #66BB6A;
+            --chart-color-2: #FFD54F;
+            --chart-color-3: #EF5350;
+            --chart-color-4: #64B5F6;
+            --chart-text-color: white;
+            --scrollbar-thumb: #555;
+            --scrollbar-track: #3b546d;
+            --tooltip-bg: #ecf0f1;
+            --tooltip-text: #2c3e50;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        main {
+            padding: 20px;
+        }
+
+        /* Navbar */
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 30px;
+            background-color: var(--navbar-bg);
+            box-shadow: 0 2px 4px var(--card-shadow);
+            margin-bottom: 20px;
+        }
+
+        .navbar-title {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: var(--navbar-text);
+        }
+
+        .navbar-buttons {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .navbar-button {
+            background-color: var(--button-bg);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 500;
+            transition: background-color 0.2s ease;
+        }
+
+        .navbar-button:hover {
+            background-color: var(--button-hover-bg);
+        }
+
+        .theme-toggle-button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        .theme-toggle-button svg {
+            width: 24px;
+            height: 24px;
+            fill: var(--icon-color);
+            transition: fill 0.3s ease;
+        }
+        .theme-toggle-button:hover svg {
+            fill: var(--icon-hover-color);
+        }
+
+        /* Top Summary Bar */
+        .summary-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px var(--card-shadow);
+            padding: 15px 30px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .summary-section {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+        .summary-section.right{
+            justify-content: flex-end;
+        }
+
+        .summary-item {
+            text-align: center;
+        }
+        
+        .summary-item h3 {
+            margin: 0 0 5px 0;
+            color: var(--text-color-light);
+            font-weight: 400;
+            font-size: 0.9em;
+            text-transform: uppercase;
+        }
+
+        .summary-item p {
+            margin: 0;
+            font-size: 1.5em;
+            font-weight: 500;
+            color: var(--text-color);
+        }
+        .summary-item.last-updated p {
+            font-size: 1em;
+            font-weight: 400;
+        }
+
+        /* Main Grid Layout */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            align-items: start; /* Align tiles to the top of their cell */
+        }
+
+        .grid-tile {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px var(--card-shadow);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+	    height: 32vh;
+        }
+
+        .tile-title {
+            color: var(--header-color);
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-weight: 500;
+            font-size: 1.2em;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        
+        /* Tooltip for question mark */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            margin-left: 8px;
+            cursor: help;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 220px;
+            background-color: var(--tooltip-bg);
+            color: var(--tooltip-text);
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px;
+            position: absolute;
+            z-index: 1;
+            top:125%;
+	    left: 50%;
+            margin-left: -110px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.85em;
+            font-weight: 400;
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* Charts */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            flex-grow: 1;
+            min-height: 200px;
+        }
+        
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border-bottom: 1px solid var(--border-color);
+            padding: 10px;
+            text-align: left;
+            font-size: 0.9em;
+        }
+        th {
+            font-weight: 500;
+            color: var(--text-color-light);
+        }
+        .table-container {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        /* Generic Tab Styles */
+        .tabs-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+        .tab-button {
+            background-color: transparent;
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 0.9em;
+            transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+        }
+        .tab-button.active {
+            background-color: var(--button-bg);
+            color: white;
+            border-color: var(--button-bg);
+            font-weight: 500;
+        }
+        .tab-button:hover:not(.active) {
+            background-color: var(--bg-color);
+        }
+        .content-wrapper {
+            position: relative;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+
+        .log-entry {
+            font-family: monospace;
+            font-size: 0.85em;
+            white-space: pre-wrap;
+            word-break: break-all;
+            padding: 2px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .rp-log-content {
+            overflow-y: auto;
+        }
+        .show-all-logs-btn {
+            margin-top: 10px;
+            background-color: transparent;
+            border: 1px solid var(--button-bg);
+            color: var(--button-bg);
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        /* VRP Summary Tile */
+        .vrp-summary-container h4 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-weight: 500;
+            color: var(--text-color-light);
+        }
+        .vrp-stats {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .vrp-stats li {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            font-size: 0.95em;
+        }
+
+	a {
+		color: var(--text-color-light);
+	}
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+        ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px;}
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.6);
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.show {
+            display: flex;
+        }
+        .modal-content {
+            background-color: var(--card-bg);
+            padding: 30px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            position: relative;
+        }
+        .close-button {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            color: var(--text-color-light);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            box-sizing: border-box;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+        .form-group button {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--button-bg);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1.1em;
+            cursor: pointer;
+        }
+        .form-group .errorlist {
+            color: var(--chart-color-3);
+            list-style: none;
+            padding: 0;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .dashboard-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            .summary-bar {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 15px;
+            }
+            .summary-section {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 15px;
+            }
+            .navbar {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+            }
+        }
+	.question-mark {
+    	    content: '?';
+    	    font-size: 60%;
+    	    font-family: sans-serif;
+    	    vertical-align: middle;
+	    font-weight: bold;
+	    text-align: center;
+	    display: inline-block;
+	    width: 1.8ex;
+	    height: 1.8ex;
+	    border-radius: 1ex;
+	    color: blue;
+	    background: white;
+	    border: thin solid blue;
+	}
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-title">RPKI Dashboard</div>
+        <div class="navbar-buttons">
+            <button class="navbar-button" onclick="openRegistrationModal()">Notify me!</button>
+	    <button class="theme-toggle-button" id="themeToggle">
+                <svg id="themeIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+            </button>
+        </div>
+    </nav>
+
+    <main>
+        {% if latest_report %}
+        <div class="summary-bar">
+            <div class="summary-section">
+                <div class="summary-item">
+                    <h3>Total Objects</h3>
+                    <p>{{ latest_report.num_objects|default:"N/A" }}</p>
+                </div>
+                <div class="summary-item">
+                    <h3>ROAs</h3>
+                    <p>{{ latest_report.num_roas|default:"N/A" }}</p>
+                </div>
+                <div class="summary-item">
+                    <h3>CAs</h3>
+                    <p>{{ latest_report.num_cas|default:"N/A" }}</p>
+                </div>
+                <div class="summary-item">
+                    <h3>Ghostbusters</h3>
+                    <p>{{ ghostbusters_count|default:"N/A" }}</p>
+                </div>
+                <div class="summary-item">
+                    <h3>Repositories</h3>
+                    <p>{{ num_repos|default:"N/A" }}</p>
+                </div>
+            </div>
+            <div class="summary-section">
+                <div class="summary-item">
+                    <h3>Max RP Execution Time (in seconds)</h3>
+                    <p>{{ latest_report.max_rp_exec_time|default:"N/A" }}</p>
+                </div>
+                <div class="summary-item">
+                    <h3>Crawler Execution Time (in seconds)</h3>
+                    <p>{{ latest_report.crawler_exec_time|default:"N/A" }}</p>
+                </div>
+            </div>
+            <div class="summary-section right">
+                <div class="summary-item last-updated">
+                    <h3>Last Updated</h3>
+                    <p>{{ latest_report.time_stamp|date:"Y-m-d H:i:s T"|default:"N/A" }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="grid-tile">
+                <h2 class="tile-title">VRPs Summary
+                    <div class="tooltip">
+                        
+			<a class="question-mark">?</a>
+			<span class="tooltiptext">Metrics on the VRPs created by the different relying parties.</span>
+                    </div>
+		</h2>
+                <div class="vrp-summary-container" style="overflow: scroll;">
+                    <h4>Overall Breakdown</h4>
+                    <ul class="vrp-stats">
+                        <li><strong>Total Unique VRPs:</strong> <span>{{ latest_report.num_total_vrps|default:"N/A" }}</span></li>
+                        <li><strong>VRPs not included by any RP:</strong> <span id="consistentVrpsCount">N/A</span></li>
+                        <li><strong>VRPs included by all RPs:</strong> <span>{{ latest_report.num_overlap_vrps|default:"N/A" }}</span></li>
+                        <li><strong>VRPs included by some RPs:</strong> <span>{{ latest_report.num_diff_vrps|default:"N/A" }}</span></li>
+                    </ul>
+                    <hr style="border-top: 1px solid var(--border-color); border-bottom: none; margin: 15px 0;">
+                    <h4>VRPs per Relying Party</h4>
+                    <div class="table-container" style="max-height: 220px;">
+                        <table>
+                            <thead><tr><th>Relying Party</th><th>VRP Count</th></tr></thead>
+                            <tbody>
+                                {# Note: Assumes `vrps_by_rp` is passed in context, e.g., `zip(rp_names, vrps_per_rp)` #}
+                                {% for rp_name, vrp_count in vrps_by_rp %}
+                                <tr><td>{{ rp_name }}</td><td>{{ vrp_count }}</td></tr>
+                                {% empty %}
+                                <tr><td colspan="2">No data available.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid-tile" style="overflow:scroll">
+                <h2 class="tile-title">Relying Party Logs
+                    <div class="tooltip">
+			<a class="question-mark">?</a>
+                        <span class="tooltiptext">Logs from various relying party software implementations.</span>
+                    </div>
+                </h2>
+                <div class="tabs-container rp-logs-tabs">
+                    {% for rp_name, logs in rp_logs_initial.items %}
+                        <button class="tab-button rp-log-tab" data-rp="{{ rp_name }}">{{ rp_name }}</button>
+                    {% endfor %}
+                </div>
+                <div class="content-wrapper">
+                    {% for rp_name, logs in rp_logs_initial.items %}
+                        <div id="log-content-{{ rp_name|slugify }}" class="tab-content rp-log-content">
+                            {% for log in logs %}
+                                <div class="log-entry">{{ log }}</div>
+                            {% endfor %}
+                            {% if rp_logs_counts|get_item:rp_name > 50 %}
+                            <button class="show-all-logs-btn" data-rp="{{ rp_name }}">Show complete logs ({{ rp_logs_counts|get_item:rp_name }} entries)</button>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="grid-tile">
+                <h2 class="tile-title">Repository Reachability
+                    <div class="tooltip">
+			<a class="question-mark">?</a>
+                        <span class="tooltiptext">Status of RPKI repositories.</span>
+                    </div>
+                </h2>
+                <div class="chart-container" style="max-height: 200px; width: 80%; margin: auto;">
+                    <canvas id="availabilityChart"></canvas>
+                </div>
+            </div>
+
+	    <div class="grid-tile">
+                 <h2 class="tile-title">Analysis
+                    <div class="tooltip">
+                        <a class="question-mark">?</a>
+                        <span class="tooltiptext">View persistent VRP differences or object inconsistencies.</span>
+                    </div>
+                </h2>
+		<div class="table-container" style="overflow:scroll">
+		    <table style="overflow:scroll">
+			    <thead><tr><th>File Name</th><th>Log Message</th><th>Number of impacted VRPs</th></tr></thead>
+			<tbody>
+			{% for item in inconsistencies %}
+			<tr><td>{{ item.file_name }}</td><td>{{ item.log_message }}</td><td>{{ item.num_impacted_vrps }}</td></tr>
+			{% empty %}
+			    <tr><td colspan="2">No inconsistencies found.</td></tr>
+			{% endfor %}
+			</tbody>
+		    </table>
+		</div>
+            </div>
+            
+
+            <div class="grid-tile">
+                <h2 class="tile-title">Common Errors
+                    <div class="tooltip">
+			    <a class="question-mark">?</a>
+			<span class="tooltiptext">Most frequent errors aggregated from relying parties.</span>
+                    </div>
+                </h2>
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>Message</th><th>Count</th></tr></thead>
+                        <tbody>
+                        {% for error in error_messages %}
+                            <tr><td>{{ error.message }}</td><td>{{ error.count }}</td></tr>
+                        {% empty %}
+                            <tr><td colspan="2">No common errors found.</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+
+            <div class="grid-tile">
+                <h2 class="tile-title">Repository Status Details
+                    <div class="tooltip">
+			    <a class="question-mark">?</a>
+			<span class="tooltiptext">List of repositories, their reachability status, and the number of VRPs they affect.</span>
+                    </div>
+                </h2>
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>URI</th><th>Reachable</th><th>Contained VRPs</th></tr></thead>
+                        <tbody>
+                        {% for repo in repositories %}
+                            <tr><td>{{ repo.uri }}</td><td>{{ repo.reachable|yesno:"✅,❌" }}</td><td>{{ repo.contained_vrps }}</td></tr>
+                        {% empty %}
+                            <tr><td colspan="3">No repositories found.</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+	    <div class="grid-tile">
+	    	<h2 class="tile-title">Code and Data</h2>
+		<p> 
+		Download the manually created test cases for RP implementations as well as the repository crawler:</p> 
+		<div>
+			<a class="navbar-button" href="static/crawler_and_tests.zip">Download test cases</a>
+		</div>
+		<p>
+		The source code for our automated RFC analysis tooling can be downloaded and explored in browser: 
+		</p>
+		<div style="align-items: space-between">
+			<a class="navbar-button" href="static/rfc-tool.zip">Download code</a> 
+			<a class="navbar-button" href="static/rfc-analysis">Explore in browser</a>.
+	    	</div>
+	    </div>
+        </div>
+        {% else %}
+            <p>No report data available. Please run the update command.</p>
+        {% endif %}
+    </main>
+
+    <div id="registrationModal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeRegistrationModal()">&times;</span>
+            <h2>Register for Updates</h2>
+            <form method="post">
+                {% csrf_token %}
+                <div class="form-group">
+                    {{ form.repository_uri.label_tag }}
+                    {{ form.repository_uri }}
+                    {{ form.repository_uri.errors }}
+                </div>
+                <div class="form-group">
+                    {{ form.email.label_tag }}
+                    {{ form.email }}
+                    {{ form.email.errors }}
+                </div>
+                <div class="form-group">
+                    <button type="submit">Register</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // --- Modal Logic ---
+        const modal = document.getElementById("registrationModal");
+        function openRegistrationModal() { modal.classList.add("show"); }
+        function closeRegistrationModal() { modal.classList.remove("show"); }
+        window.onclick = function(event) {
+            if (event.target == modal) closeRegistrationModal();
+        }
+
+        // --- Theme Logic ---
+        const themeToggleBtn = document.getElementById('themeToggle');
+        const themeIcon = document.getElementById('themeIcon');
+        const body = document.body;
+
+        function setTheme(isDarkMode) {
+            body.classList.toggle('dark-mode', isDarkMode);
+            themeIcon.innerHTML = isDarkMode 
+                ? `<path d="M12 2.25a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0V3a.75.75 0 0 1 .75-.75ZM7.14 7.14a.75.75 0 0 1 0 1.06l-1.06 1.06a.75.75 0 1 1-1.06-1.06l1.06-1.06a.75.75 0 0 1 1.06 0ZM3 12a.75.75 0 0 1 .75-.75h1.5a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 12Zm3.086 5.561a.75.75 0 0 1-1.061 0l-1.06-1.061a.75.75 0 0 1 1.06-1.06l1.061 1.06a.75.75 0 0 1 0 1.061ZM12 18a.75.75 0 0 1-.75.75h-1.5a.75.75 0 0 1 0-1.5h1.5a.75.75 0 0 1 .75.75Zm5.561-3.086a.75.75 0 0 1 0 1.06l-1.061 1.06a.75.75 0 1 1-1.06-1.06l1.06-1.061a.75.75 0 0 1 1.061 0ZM21 12a.75.75 0 0 1-.75.75h-1.5a.75.75 0 0 1 0-1.5h1.5a.75.75 0 0 1 .75.75Zm-3.086-5.561a.75.75 0 0 1 1.061 0l1.06 1.061a.75.75 0 1 1-1.06 1.06l-1.061-1.06a.75.75 0 0 1 0-1.061ZM12 6a6 6 0 1 1 0 12A6 6 0 0 1 12 6Z" clip-rule="evenodd" fill-rule="evenodd" />`
+                : `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>`;
+            localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+            updateChartsTheme(isDarkMode ? "white" : "black");
+        }
+        
+        function setupScopedTabs(containerSelector, tabButtonSelector, contentClass, contentIdPrefix) {
+            const container = document.querySelector(containerSelector);
+            if (!container) return;
+
+            const parentTile = container.closest('.grid-tile');
+            if (!parentTile) return;
+
+            container.addEventListener('click', e => {
+                const clickedTab = e.target.closest(tabButtonSelector);
+                if (!clickedTab) return;
+
+                // Deactivate all tabs within this specific container
+                container.querySelectorAll(tabButtonSelector).forEach(tab => tab.classList.remove('active'));
+                clickedTab.classList.add('active');
+
+                // Get the unique identifier from the data attribute
+                const tabId = clickedTab.dataset.tab || clickedTab.dataset.rp;
+                
+                // Deactivate all content sections within this tile
+                parentTile.querySelectorAll(`.${contentClass}`).forEach(content => content.classList.remove('active'));
+
+                // Construct the target content ID
+                const safeTabId = tabId.replace(/[^a-zA-Z0-9-_]/g, '-');
+                const contentElementId = `${contentIdPrefix}${safeTabId}`;
+                const activeContent = parentTile.querySelector(`#${contentElementId}`);
+
+                if (activeContent) {
+                    activeContent.classList.add('active');
+                }
+            });
+            
+            // Activate the first tab by default
+            const firstTab = container.querySelector(tabButtonSelector);
+            if (firstTab) {
+                firstTab.click();
+            }
+        }
+        
+        document.querySelectorAll('.show-all-logs-btn').forEach(btn => {
+            btn.addEventListener('click', async e => {
+                const rpName = e.target.dataset.rp;
+                const logContentDiv = e.target.parentElement;
+                e.target.textContent = 'Loading...';
+                e.target.disabled = true;
+                
+                const response = await fetch(`/api/get_all_rp_logs/${rpName}/`);
+                if(response.ok) {
+                    const data = await response.json();
+                    logContentDiv.innerHTML = data.logs.map(log => `<div class="log-entry">${log}</div>`).join('');
+                } else {
+                    e.target.textContent = 'Error loading logs.';
+                }
+            });
+        });
+
+        // --- Charts ---
+        let availabilityChart;
+        const chartData = {
+            num_overlap_vrps: {{ latest_report.num_overlap_vrps|default:0 }},
+            num_diff_vrps: {{ latest_report.num_diff_vrps|default:0 }},
+            num_total_vrps: {{ latest_report.num_total_vrps|default:0 }},
+            reachable_repos: {{ reachable_repos_count|default:0 }},
+            unreachable_repos: {{ unreachable_repos_count|default:0 }},
+        };
+        
+        function updateChartsTheme(chartTextColor) {
+            const chartColors = {
+                green: getComputedStyle(document.documentElement).getPropertyValue('--chart-color-1').trim(),
+                red: getComputedStyle(document.documentElement).getPropertyValue('--chart-color-3').trim(),
+            };
+            const cardBgColor = getComputedStyle(document.documentElement).getPropertyValue('--card-bg').trim();
+
+            if (availabilityChart) availabilityChart.destroy();
+            {% if latest_report %}
+            // Availability Chart
+            const availabilityCtx = document.getElementById('availabilityChart');
+            if(availabilityCtx) {
+                availabilityChart = new Chart(availabilityCtx.getContext('2d'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Reachable', 'Unreachable'],
+                        datasets: [{
+                            data: [chartData.reachable_repos, chartData.unreachable_repos],
+                            backgroundColor: [chartColors.green, chartColors.red],
+                            borderColor: cardBgColor,
+                            borderWidth: 2,
+                        }]
+                    },
+                    options: { 
+                        responsive: true, 
+                        maintainAspectRatio: false, 
+                        plugins: { 
+                            legend: { 
+                                position: 'bottom', 
+                                labels: { color: chartTextColor, font: { size: 12 } }
+                            } 
+                        } 
+                    }
+                });
+            }
+            {% endif %}
+        }
+        
+        // --- Initial Load ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('theme');
+            setTheme(savedTheme === 'dark');
+
+            // Setup independent, scoped tabs
+            setupScopedTabs('#analysisTabs', '.tab-button', 'tab-content', 'analysis-content-');
+            setupScopedTabs('.rp-logs-tabs', '.rp-log-tab', 'rp-log-content', 'log-content-');
+
+            {% if latest_report %}
+            // Calculate and display consistent VRPs count
+            const consistentVrps = chartData.num_total_vrps - (chartData.num_overlap_vrps + chartData.num_diff_vrps);
+            const consistentVrpsEl = document.getElementById('consistentVrpsCount');
+            if (consistentVrpsEl) {
+                consistentVrpsEl.textContent = consistentVrps >= 0 ? consistentVrps.toLocaleString() : 'N/A';
+            }
+            {% endif %}
+
+            // Handle potential form errors on page load after submission failed
+            {% if form.errors %}
+            openRegistrationModal();
+            {% endif %}
+        });
+
+        themeToggleBtn.addEventListener('click', () => {
+            setTheme(!body.classList.contains('dark-mode'));
+        });
+    </script>
+</body>
+</html>
