@@ -1,6 +1,6 @@
 # myapp/models.py
 from django.db import models
-import uuid
+
 
 class Report(models.Model):
     time_stamp = models.DateTimeField()
