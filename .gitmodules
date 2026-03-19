@@ -1,3 +1,0 @@
-[submodule "cure_asn1"]
-	path = cure_asn1
-	url = https://github.com/niklbird/cure_asn1.git
