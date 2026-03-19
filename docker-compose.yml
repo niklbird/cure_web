@@ -1,0 +1,61 @@
+services:
+  # ─── Rust → WASM build stage (runs once, then exits) ──────────────────────
+  #wasm-builder:
+  #  build:
+  #    context: wasm
+  #    dockerfile: Dockerfile
+  #  volumes:
+  #    - wasm-output:/output
+
+  # ─── Vue.js frontend (builds after WASM, served by nginx) ─────────────────
+  frontend:
+    build:
+      context: src/frontend
+      dockerfile: Dockerfile
+    #depends_on:
+    #  wasm-builder:
+    #    condition: service_completed_successfully
+    volumes:
+      - wasm-output:/wasm-input:ro
+      - frontend-dist:/output
+
+  # ─── Django backend API ────────────────────────────────────────────────────
+  backend:
+    build:
+      context: src/backend
+      dockerfile: Dockerfile
+    volumes:
+      - db-data:/app/data
+      - static-files:/app/staticfiles
+      - ${REPORTS_DIR:-./data/reports}:/app/data/reports
+    environment:
+      - DJANGO_SETTINGS_MODULE=notify.settings
+      - DATABASE_PATH=/app/data/db.sqlite3
+      - DATA_FOLDER=/app/data/reports
+      - WATCH_POLL_INTERVAL=${WATCH_POLL_INTERVAL:-5}
+      - DJANGO_ALLOWED_HOSTS=*
+      - DJANGO_DEBUG=0
+    expose:
+      - "8000"
+
+  # ─── Nginx reverse proxy ──────────────────────────────────────────────────
+  nginx:
+    build:
+      context: nginx
+      dockerfile: Dockerfile
+    depends_on:
+      frontend:
+        condition: service_completed_successfully
+      backend:
+        condition: service_started
+    ports:
+      - "${APP_PORT:-8080}:80"
+    volumes:
+      - frontend-dist:/usr/share/nginx/html/app:ro
+      - static-files:/usr/share/nginx/html/static:ro
+
+volumes:
+  wasm-output:
+  frontend-dist:
+  db-data:
+  static-files:
