@@ -31,10 +31,10 @@
   </div>
 </template>
 
-<script>
-export default {
-  mounted() {
-    document.title = "About DERP | ASN.1 Editor and RPKI Test Suite";
-  }
-}
+<script setup lang="ts">
+import { onMounted } from 'vue'
+
+onMounted(() => {
+  document.title = "About DERP | ASN.1 Editor and RPKI Test Suite";
+})
 </script>

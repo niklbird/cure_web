@@ -1,533 +1,525 @@
 <template>
-    <v-container fluid class="upload-container">
-        <!-- Dialog to confirm if the file should be opened in a new tab or the current tab -->
-        <v-dialog v-model="dialog" max-width="400">
-            <v-card class="confirm-dialog">
-                <v-card-title class="text-h6">Open in new tab?</v-card-title>
-                <v-card-text class="text-body-1">
-                    Do you want to open the file in a new tab?
-                </v-card-text>
-                <v-card-actions class="justify-end pa-4">
-                    <v-btn variant="tonal" @click="() => (dialog = false)">Cancel</v-btn>
-                    <v-btn variant="tonal" @click="open(false)">This tab</v-btn>
-                    <v-btn variant="flat" color="primary" @click="open(true)">New tab</v-btn>
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
+  <v-container fluid class="upload-container">
+    <!-- Dialog: open in new tab or current tab -->
+    <v-dialog v-model="dialog" max-width="400">
+      <v-card class="confirm-dialog">
+        <v-card-title class="text-h6">Open in new tab?</v-card-title>
+        <v-card-text class="text-body-1">
+          Do you want to open the file in a new tab?
+        </v-card-text>
+        <v-card-actions class="justify-end pa-4">
+          <v-btn variant="tonal" @click="dialog = false">Cancel</v-btn>
+          <v-btn variant="tonal" @click="open(false)">This tab</v-btn>
+          <v-btn variant="flat" color="primary" @click="open(true)">New tab</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
-        <!-- Dialog to show report info when loading a report file -->
-        <v-dialog v-model="reportDialog" max-width="500">
-            <v-card class="report-dialog">
-                <v-card-title class="text-h6">
-                    <v-icon start>mdi-file-document-outline</v-icon>
-                    Report File Detected
-                </v-card-title>
-                <v-card-text class="text-body-1">
-                    <p>This file contains a saved report with an ASN.1 object.</p>
-                    <v-divider class="my-3"></v-divider>
-                    <div class="report-info">
-                        <div><strong>Name:</strong> {{ reportInfo.name }}</div>
-                        <div><strong>Exported:</strong> {{ reportInfo.exportedAt }}</div>
-                        <div><strong>Test Results:</strong> {{ reportInfo.resultCount }} RP(s) tested</div>
-                    </div>
-                </v-card-text>
-                <v-card-actions class="justify-end pa-4">
-                    <v-btn variant="tonal" @click="reportDialog = false">Cancel</v-btn>
-                    <v-btn variant="flat" color="primary" @click="loadReportObject(true)">
-                        <v-icon start>mdi-plus</v-icon>
-                        Load in New Tab
-                    </v-btn>
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
+    <!-- Dialog: report file detected -->
+    <v-dialog v-model="reportDialog" max-width="500">
+      <v-card class="report-dialog">
+        <v-card-title class="text-h6">
+          <v-icon start>mdi-file-document-outline</v-icon>
+          Report File Detected
+        </v-card-title>
+        <v-card-text class="text-body-1">
+          <p>This file contains a saved report with an ASN.1 object.</p>
+          <v-divider class="my-3" />
+          <div class="report-info">
+            <div><strong>Name:</strong> {{ reportInfo.name }}</div>
+            <div><strong>Exported:</strong> {{ reportInfo.exportedAt }}</div>
+            <div><strong>Test Results:</strong> {{ reportInfo.resultCount }} RP(s) tested</div>
+          </div>
+        </v-card-text>
+        <v-card-actions class="justify-end pa-4">
+          <v-btn variant="tonal" @click="reportDialog = false">Cancel</v-btn>
+          <v-btn variant="flat" color="primary" @click="loadReportObject(true)">
+            <v-icon start>mdi-plus</v-icon>
+            Load in New Tab
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
-        <v-card class="upload-card" elevation="0">
-            <!-- Tab Navigation -->
-            <v-tabs v-model="activeTab" color="primary" class="upload-tabs">
-                <v-tab value="file" class="tab-item">
-                    <v-icon start>mdi-file-upload-outline</v-icon>
-                    File
-                </v-tab>
-                <v-tab value="paste" class="tab-item">
-                    <v-icon start>mdi-content-paste</v-icon>
-                    Paste
-                </v-tab>
-                <v-tab value="example" class="tab-item">
-                    <v-icon start>mdi-file-document-outline</v-icon>
-                    Examples
-                </v-tab>
-            </v-tabs>
+    <v-card class="upload-card" elevation="0">
+      <!-- Tab Navigation -->
+      <v-tabs v-model="activeTab" color="primary" class="upload-tabs">
+        <v-tab value="file" class="tab-item">
+          <v-icon start>mdi-file-upload-outline</v-icon>
+          File
+        </v-tab>
+        <v-tab value="paste" class="tab-item">
+          <v-icon start>mdi-content-paste</v-icon>
+          Paste
+        </v-tab>
+        <v-tab value="example" class="tab-item">
+          <v-icon start>mdi-file-document-outline</v-icon>
+          Examples
+        </v-tab>
+      </v-tabs>
 
-            <v-divider></v-divider>
+      <v-divider />
 
-            <v-window v-model="activeTab" class="tab-content">
-                <!-- File Upload Tab -->
-                <v-window-item value="file">
-                    <div
-                        class="drop-zone"
-                        :class="{ 'drop-zone--active': dragOver, 'drop-zone--has-file': file }"
-                        @dragover.prevent="dragOver = true"
-                        @dragleave.prevent="dragOver = false"
-                        @drop.prevent="handleDrop"
-                        @click="triggerFileInput"
-                    >
-                        <input
-                            type="file"
-                            ref="fileInput"
-                            style="display: none"
-                            @change="handleFileSelect"
-                            multiple
-                        />
+      <v-window v-model="activeTab" class="tab-content">
+        <!-- File Upload Tab -->
+        <v-window-item value="file">
+          <div
+            class="drop-zone"
+            :class="{ 'drop-zone--active': dragOver, 'drop-zone--has-file': file }"
+            @dragover.prevent="dragOver = true"
+            @dragleave.prevent="dragOver = false"
+            @drop.prevent="handleDrop"
+            @click="triggerFileInput"
+          >
+            <input
+              type="file"
+              ref="fileInputRef"
+              style="display: none"
+              @change="handleFileSelect"
+              multiple
+            />
 
-                        <div class="drop-zone__content">
-                            <v-icon
-                                :icon="file ? 'mdi-file-check-outline' : 'mdi-cloud-upload-outline'"
-                                :color="file ? 'success' : 'primary'"
-                                size="48"
-                                class="drop-zone__icon"
-                            ></v-icon>
+            <div class="drop-zone__content">
+              <v-icon
+                :icon="file ? 'mdi-file-check-outline' : 'mdi-cloud-upload-outline'"
+                :color="file ? 'success' : 'primary'"
+                size="48"
+                class="drop-zone__icon"
+              />
+              <div v-if="!file" class="drop-zone__text">
+                <span class="drop-zone__title">Drop files here</span>
+                <span class="drop-zone__subtitle">or click to browse</span>
+              </div>
+              <div v-else class="drop-zone__file">
+                <span class="drop-zone__filename">{{ file.name }}</span>
+                <v-btn
+                  icon="mdi-close"
+                  size="x-small"
+                  variant="text"
+                  @click.stop="clearFile"
+                  class="drop-zone__clear"
+                />
+              </div>
+            </div>
 
-                            <div v-if="!file" class="drop-zone__text">
-                                <span class="drop-zone__title">Drop files here</span>
-                                <span class="drop-zone__subtitle">or click to browse</span>
-                            </div>
+            <div class="drop-zone__hint">
+              Supports DER, PEM, Base64, JSON, and Report files
+            </div>
+          </div>
+        </v-window-item>
 
-                            <div v-else class="drop-zone__file">
-                                <span class="drop-zone__filename">{{ file.name }}</span>
-                                <v-btn
-                                    icon="mdi-close"
-                                    size="x-small"
-                                    variant="text"
-                                    @click.stop="clearFile"
-                                    class="drop-zone__clear"
-                                ></v-btn>
-                            </div>
-                        </div>
+        <!-- Paste Tab -->
+        <v-window-item value="paste">
+          <div class="paste-zone">
+            <v-textarea
+              v-model="pastedContent"
+              variant="outlined"
+              label="Paste Base64, Hex, or PEM content"
+              placeholder="Paste your encoded content here..."
+              rows="6"
+              auto-grow
+              hide-details
+              class="paste-textarea"
+            />
+            <v-btn
+              color="primary"
+              variant="flat"
+              :disabled="!pastedContent"
+              @click="handlePastedContent"
+              class="mt-4"
+              block
+            >
+              <v-icon start>mdi-check</v-icon>
+              Load Content
+            </v-btn>
+          </div>
+        </v-window-item>
 
-                        <div class="drop-zone__hint">
-                            Supports DER, PEM, Base64, JSON, and Report files
-                        </div>
-                    </div>
-                </v-window-item>
-
-                <!-- Paste Tab -->
-                <v-window-item value="paste">
-                    <div class="paste-zone">
-                        <v-textarea
-                            v-model="pastedContent"
-                            variant="outlined"
-                            label="Paste Base64, Hex, or PEM content"
-                            placeholder="Paste your encoded content here..."
-                            rows="6"
-                            auto-grow
-                            hide-details
-                            class="paste-textarea"
-                        ></v-textarea>
-
-                        <v-btn
-                            color="primary"
-                            variant="flat"
-                            :disabled="!pastedContent"
-                            @click="handlePastedContent"
-                            class="mt-4"
-                            block
-                        >
-                            <v-icon start>mdi-check</v-icon>
-                            Load Content
-                        </v-btn>
-                    </div>
-                </v-window-item>
-
-                <!-- Examples Tab -->
-                <v-window-item value="example">
-                    <div class="examples-grid">
-                        <v-btn
-                            v-for="example in examples"
-                            :key="example.type"
-                            variant="tonal"
-                            color="primary"
-                            @click="loadExample(example.type)"
-                            class="example-btn"
-                        >
-                            <v-icon start>{{ example.icon }}</v-icon>
-                            {{ example.label }}
-                        </v-btn>
-                    </div>
-                    <p class="examples-hint">
-                        Load a sample RPKI object to explore the editor
-                    </p>
-                </v-window-item>
-            </v-window>
-        </v-card>
-    </v-container>
+        <!-- Examples Tab -->
+        <v-window-item value="example">
+          <div class="examples-grid">
+            <v-btn
+              v-for="example in examples"
+              :key="example.type"
+              variant="tonal"
+              color="primary"
+              @click="loadExample(example.type)"
+              class="example-btn"
+            >
+              <v-icon start>{{ example.icon }}</v-icon>
+              {{ example.label }}
+            </v-btn>
+          </div>
+          <p class="examples-hint">Load a sample RPKI object to explore the editor</p>
+        </v-window-item>
+      </v-window>
+    </v-card>
+  </v-container>
 </template>
 
-<script>
+<script setup lang="ts">
+import { ref } from 'vue'
 import { useTabsStore } from '@/stores/tabs'
 
-export default {
-    setup() {
-        const store = useTabsStore()
-        return { store }
-    },
-    data() {
-        return {
-            activeTab: 'file',
-            data: null,
-            file: null,
-            pastedContent: '',
-            dragOver: false,
-            dialog: false,
-            reportDialog: false,
-            reportData: null,
-            reportInfo: {
-                name: '',
-                exportedAt: '',
-                resultCount: 0
-            },
-            examples: [
-                { type: 'roa', label: 'ROA', icon: 'mdi-shield-check-outline' },
-                { type: 'mft', label: 'Manifest', icon: 'mdi-format-list-checks' },
-                { type: 'crl', label: 'CRL', icon: 'mdi-close-circle-outline' },
-                { type: 'cer', label: 'Certificate', icon: 'mdi-certificate-outline' },
-                { type: 'asa', label: 'ASPA', icon: 'mdi-link-variant' },
-                { type: 'gbr', label: 'Ghostbuster', icon: 'mdi-ghost-outline' },
-                { type: 'tls', label: 'TLS', icon: 'mdi-lock-outline' }
-            ]
+interface ExampleDef {
+  type: string
+  label: string
+  icon: string
+}
+
+interface ReportFileData {
+  version: string
+  exportedAt?: string
+  name: string
+  state: string
+  report: any[]
+}
+
+const store = useTabsStore()
+
+const emit = defineEmits<{
+  upload: []
+  reportLoaded: [data: { name: string; state: string; report: any[] }]
+}>()
+
+// ─── State ────────────────────────────────────────────────────────────────────
+
+const activeTab = ref('file')
+const data = ref<string | null>(null)
+const file = ref<File | null>(null)
+const pastedContent = ref('')
+const dragOver = ref(false)
+const dialog = ref(false)
+const reportDialog = ref(false)
+const reportData = ref<ReportFileData | null>(null)
+const reportInfo = ref({ name: '', exportedAt: '', resultCount: 0 })
+const fileInputRef = ref<HTMLInputElement | null>(null)
+
+const examples: ExampleDef[] = [
+  { type: 'roa', label: 'ROA', icon: 'mdi-shield-check-outline' },
+  { type: 'mft', label: 'Manifest', icon: 'mdi-format-list-checks' },
+  { type: 'crl', label: 'CRL', icon: 'mdi-close-circle-outline' },
+  { type: 'cer', label: 'Certificate', icon: 'mdi-certificate-outline' },
+  { type: 'asa', label: 'ASPA', icon: 'mdi-link-variant' },
+  { type: 'gbr', label: 'Ghostbuster', icon: 'mdi-ghost-outline' },
+  { type: 'tls', label: 'TLS', icon: 'mdi-lock-outline' }
+]
+
+// ─── Methods ──────────────────────────────────────────────────────────────────
+
+function loadExample(type: string): void {
+  store.addTab(type + '_example')
+  store.stateSet({
+    tab: store.currentTab,
+    type: 'example',
+    data: type
+  })
+  emit('upload')
+}
+
+function open(newTab: boolean): void {
+  dialog.value = false
+  const type = file.value?.name.endsWith('.json') ? 'json' : 'hex'
+
+  if (newTab) {
+    store.addTab(file.value?.name ?? 'Unnamed')
+  }
+
+  store.stateSet({
+    tab: store.currentTab,
+    data: data.value,
+    type: type as any
+  })
+
+  clearFile()
+  emit('upload')
+}
+
+function isReportFile(jsonData: string): boolean {
+  try {
+    const parsed = JSON.parse(jsonData)
+    return !!(parsed.version && parsed.state && parsed.report && Array.isArray(parsed.report))
+  } catch {
+    return false
+  }
+}
+
+function loadReportObject(newTab: boolean): void {
+  reportDialog.value = false
+  if (!reportData.value) return
+
+  const tabName = reportData.value.name || 'Loaded from Report'
+
+  if (newTab) {
+    store.addTab(tabName)
+  }
+
+  store.stateSet({
+    tab: store.currentTab,
+    data: reportData.value.state,
+    type: 'json'
+  })
+
+  emit('reportLoaded', {
+    name: reportData.value.name,
+    state: reportData.value.state,
+    report: reportData.value.report
+  })
+
+  reportData.value = null
+  clearFile()
+  emit('upload')
+}
+
+async function processFile(f: File): Promise<void> {
+  file.value = f
+
+  try {
+    if (f.name.endsWith('.json')) {
+      const jsonText = await f.text()
+
+      if (isReportFile(jsonText)) {
+        const parsed = JSON.parse(jsonText) as ReportFileData
+        reportData.value = parsed
+        reportInfo.value = {
+          name: parsed.name ?? 'Unknown',
+          exportedAt: parsed.exportedAt ? new Date(parsed.exportedAt).toLocaleString() : 'Unknown',
+          resultCount: parsed.report ? parsed.report.length : 0
         }
-    },
-    emits: ['upload', 'reportLoaded'],
-    methods: {
-        loadExample(type) {
-            this.store.addTab(type + '_example')
-            this.store.stateSet({
-                tab: this.store.currentTab,
-                type: 'example',
-                data: type
-            })
-            this.$emit('upload')
-        },
-        open(newTab) {
-            this.dialog = false
-            const type = this.file.name.endsWith('.json') ? 'json' : 'hex'
+        reportDialog.value = true
+        return
+      }
 
-            if (newTab) {
-                this.store.addTab(this.file.name || 'Unnamed')
-            }
-
-            this.store.stateSet({
-                tab: this.store.currentTab,
-                data: this.data,
-                type: type
-            })
-
-            this.clearFile()
-            this.$emit('upload')
-        },
-        // Check if a JSON file is a report file
-        isReportFile(jsonData) {
-            try {
-                const parsed = JSON.parse(jsonData)
-                // Check for report file structure: has version, state, and report fields
-                return parsed.version && parsed.state && parsed.report && Array.isArray(parsed.report)
-            } catch {
-                return false
-            }
-        },
-        // Load the ASN.1 object from a report file
-        loadReportObject(newTab) {
-            this.reportDialog = false
-            
-            if (!this.reportData) return
-
-            const tabName = this.reportData.name || 'Loaded from Report'
-
-            if (newTab) {
-                this.store.addTab(tabName)
-            }
-
-            // The state in the report is in the same format as regular JSON exports
-            this.store.stateSet({
-                tab: this.store.currentTab,
-                data: this.reportData.state,
-                type: 'json'
-            })
-
-            // Emit the report data so the parent can add it to the reports array
-            this.$emit('reportLoaded', {
-                name: this.reportData.name,
-                state: this.reportData.state,
-                report: this.reportData.report
-            })
-
-            this.reportData = null
-            this.clearFile()
-            this.$emit('upload')
-        },
-        async processFile(file) {
-            this.file = file
-
-            try {
-                if (file.name.endsWith('.json')) {
-                    const jsonText = await file.text()
-                    
-                    // Check if this is a report file
-                    if (this.isReportFile(jsonText)) {
-                        const parsed = JSON.parse(jsonText)
-                        this.reportData = parsed
-                        this.reportInfo = {
-                            name: parsed.name || 'Unknown',
-                            exportedAt: parsed.exportedAt ? new Date(parsed.exportedAt).toLocaleString() : 'Unknown',
-                            resultCount: parsed.report ? parsed.report.length : 0
-                        }
-                        this.reportDialog = true
-                        return
-                    }
-                    
-                    // Regular JSON file
-                    this.data = jsonText
-                } else {
-                    try {
-                        const decoder = new TextDecoder('utf-8', { fatal: true })
-                        const arrayBuffer = await file.arrayBuffer()
-                        this.data = decoder.decode(arrayBuffer)
-                    } catch (e) {
-                        const arrayBuffer = await file.arrayBuffer()
-                        const uint8Array = new Uint8Array(arrayBuffer)
-                        this.data = [...uint8Array]
-                            .map(byte => byte.toString(16).padStart(2, '0').toUpperCase())
-                            .join('')
-                    }
-                }
-            } catch (err) {
-                console.error('Error processing file:', err)
-                alert(`Error processing ${file.name}. Please ensure the file is valid.`)
-                this.file = null
-                return
-            }
-        },
-        triggerFileInput() {
-            this.$refs.fileInput.click()
-        },
-        clearFile() {
-            this.file = null
-            this.data = null
-            this.reportData = null
-            if (this.$refs.fileInput) {
-                this.$refs.fileInput.value = ''
-            }
-        },
-        async handleFileSelect(event) {
-            const files = event.target.files
-            const multiple = files.length > 1
-
-            for (const file of files) {
-                await this.processFile(file)
-
-                // If it's a report file, the dialog will be shown by processFile
-                if (this.reportDialog) {
-                    continue
-                }
-
-                if (multiple || this.store.tabs.length === 0) {
-                    this.open(true)
-                } else {
-                    this.dialog = true
-                }
-            }
-        },
-        async handleDrop(event) {
-            this.dragOver = false
-            const files = event.dataTransfer.files
-            const multiple = files.length > 1
-
-            for (const file of files) {
-                await this.processFile(file)
-
-                // If it's a report file, the dialog will be shown by processFile
-                if (this.reportDialog) {
-                    continue
-                }
-
-                if (multiple || this.store.tabs.length === 0) {
-                    this.open(true)
-                } else {
-                    this.dialog = true
-                }
-            }
-        },
-        handlePastedContent() {
-            if (!this.pastedContent) return
-
-            this.data = this.pastedContent.trim()
-            this.file = { name: 'Pasted Content' }
-
-            if (this.store.tabs.length === 0) {
-                this.open(true)
-            } else {
-                this.dialog = true
-            }
-
-            this.pastedContent = ''
-        }
+      data.value = jsonText
+    } else {
+      try {
+        const decoder = new TextDecoder('utf-8', { fatal: true })
+        const arrayBuffer = await f.arrayBuffer()
+        data.value = decoder.decode(arrayBuffer)
+      } catch {
+        const arrayBuffer = await f.arrayBuffer()
+        const uint8Array = new Uint8Array(arrayBuffer)
+        data.value = [...uint8Array].map(byte => byte.toString(16).padStart(2, '0').toUpperCase()).join('')
+      }
     }
+  } catch (err) {
+    console.error('Error processing file:', err)
+    alert(`Error processing ${f.name}. Please ensure the file is valid.`)
+    file.value = null
+  }
+}
+
+function triggerFileInput(): void {
+  fileInputRef.value?.click()
+}
+
+function clearFile(): void {
+  file.value = null
+  data.value = null
+  reportData.value = null
+  if (fileInputRef.value) {
+    fileInputRef.value.value = ''
+  }
+}
+
+async function handleFileSelect(event: Event): Promise<void> {
+  const target = event.target as HTMLInputElement
+  const files = target.files
+  if (!files) return
+  const multiple = files.length > 1
+
+  for (const f of files) {
+    await processFile(f)
+    if (reportDialog.value) continue
+    if (multiple || store.tabs.length === 0) {
+      open(true)
+    } else {
+      dialog.value = true
+    }
+  }
+}
+
+async function handleDrop(event: DragEvent): Promise<void> {
+  dragOver.value = false
+  const files = event.dataTransfer?.files
+  if (!files) return
+  const multiple = files.length > 1
+
+  for (const f of files) {
+    await processFile(f)
+    if (reportDialog.value) continue
+    if (multiple || store.tabs.length === 0) {
+      open(true)
+    } else {
+      dialog.value = true
+    }
+  }
+}
+
+function handlePastedContent(): void {
+  if (!pastedContent.value) return
+
+  data.value = pastedContent.value.trim()
+  file.value = { name: 'Pasted Content' } as File
+
+  if (store.tabs.length === 0) {
+    open(true)
+  } else {
+    dialog.value = true
+  }
+
+  pastedContent.value = ''
 }
 </script>
 
 <style scoped>
 .upload-container {
-    max-width: 600px;
-    margin: 0 auto;
-    padding: 16px;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 16px;
 }
 
 .upload-card {
-    border: 1px solid rgba(var(--v-border-color), 0.12);
-    border-radius: 12px;
-    overflow: hidden;
-    background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-border-color), 0.12);
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgb(var(--v-theme-surface));
 }
 
 .upload-tabs {
-    background: transparent;
+  background: transparent;
 }
 
 .tab-item {
-    text-transform: none;
-    font-weight: 500;
-    letter-spacing: 0;
+  text-transform: none;
+  font-weight: 500;
+  letter-spacing: 0;
 }
 
 .tab-content {
-    min-height: 220px;
+  min-height: 220px;
 }
 
-/* Drop Zone Styles */
 .drop-zone {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 180px;
-    margin: 20px;
-    padding: 24px;
-    border: 2px dashed rgba(var(--v-theme-primary), 0.3);
-    border-radius: 12px;
-    background: rgba(var(--v-theme-primary), 0.02);
-    cursor: pointer;
-    transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 180px;
+  margin: 20px;
+  padding: 24px;
+  border: 2px dashed rgba(var(--v-theme-primary), 0.3);
+  border-radius: 12px;
+  background: rgba(var(--v-theme-primary), 0.02);
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .drop-zone:hover {
-    border-color: rgba(var(--v-theme-primary), 0.5);
-    background: rgba(var(--v-theme-primary), 0.05);
+  border-color: rgba(var(--v-theme-primary), 0.5);
+  background: rgba(var(--v-theme-primary), 0.05);
 }
 
 .drop-zone--active {
-    border-color: rgb(var(--v-theme-primary));
-    background: rgba(var(--v-theme-primary), 0.08);
-    transform: scale(1.01);
+  border-color: rgb(var(--v-theme-primary));
+  background: rgba(var(--v-theme-primary), 0.08);
+  transform: scale(1.01);
 }
 
 .drop-zone--has-file {
-    border-style: solid;
-    border-color: rgba(var(--v-theme-success), 0.5);
-    background: rgba(var(--v-theme-success), 0.05);
+  border-style: solid;
+  border-color: rgba(var(--v-theme-success), 0.5);
+  background: rgba(var(--v-theme-success), 0.05);
 }
 
 .drop-zone__content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
 }
 
 .drop-zone__icon {
-    opacity: 0.8;
+  opacity: 0.8;
 }
 
 .drop-zone__text {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
 }
 
 .drop-zone__title {
-    font-size: 1rem;
-    font-weight: 500;
-    color: rgb(var(--v-theme-on-surface));
+  font-size: 1rem;
+  font-weight: 500;
 }
 
 .drop-zone__subtitle {
-    font-size: 0.875rem;
-    color: rgba(var(--v-theme-on-surface), 0.6);
+  font-size: 0.875rem;
+  opacity: 0.6;
 }
 
 .drop-zone__file {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .drop-zone__filename {
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: rgb(var(--v-theme-success));
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: rgb(var(--v-theme-success));
 }
 
 .drop-zone__hint {
-    margin-top: 16px;
-    font-size: 0.75rem;
-    color: rgba(var(--v-theme-on-surface), 0.5);
+  margin-top: 16px;
+  font-size: 0.75rem;
+  opacity: 0.5;
 }
 
-/* Paste Zone Styles */
 .paste-zone {
-    padding: 20px;
+  padding: 20px;
 }
 
 .paste-textarea :deep(.v-field) {
-    border-radius: 8px;
+  border-radius: 8px;
 }
 
-/* Examples Grid Styles */
 .examples-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 12px;
-    padding: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+  padding: 20px;
 }
 
 .example-btn {
-    text-transform: none;
-    font-weight: 500;
-    letter-spacing: 0;
+  text-transform: none;
+  font-weight: 500;
+  letter-spacing: 0;
 }
 
 .examples-hint {
-    text-align: center;
-    font-size: 0.8rem;
-    color: rgba(var(--v-theme-on-surface), 0.5);
-    padding: 0 20px 20px;
-    margin: 0;
+  text-align: center;
+  font-size: 0.8rem;
+  opacity: 0.5;
+  padding: 0 20px 20px;
+  margin: 0;
 }
 
-/* Report dialog styles */
 .report-info {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .report-info div {
-    font-size: 0.95rem;
+  font-size: 0.95rem;
 }
 
-/* Responsive adjustments */
 @media (max-width: 600px) {
-    .examples-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
+  .examples-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 </style>

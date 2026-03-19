@@ -88,7 +88,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, reactive, computed, watch, onUnmounted, nextTick } from 'vue';
 
 // --- STATE MANAGEMENT ---
