@@ -273,7 +273,7 @@
         </v-tabs>
       </v-col>
 
-      <v-col cols="12" md="6">
+      <v-col cols="12" md class="center-col">
         <div
           :style="{ position: 'absolute', left: `${menuX}px`, top: `${menuY}px` }"
           ref="activatorRef"
@@ -293,7 +293,7 @@
         </div>
       </v-col>
 
-      <v-col cols="12" md="4">
+      <v-col cols="12" md="4" class="right-col">
         <div class="byte-grid-container" ref="bytesRef">
           <div class="byte-grid" v-if="store.tree.length > 0">
             <span
@@ -841,6 +841,21 @@ onUpdated(() => {
 
 .crashed-thin {
   color: red;
+}
+
+/* column spacing */
+
+/* have center col take up all remaining space */
+.center-col {
+  overflow: scroll;
+}
+/* prevent right col with byte-grid from taking too little space on medium
+  screens and too much space on wide screens */
+@media (min-width: 960px) {
+  .right-col {
+    min-width: 26em;
+    max-width: 32em;
+  }
 }
 
 .byte-grid-container {

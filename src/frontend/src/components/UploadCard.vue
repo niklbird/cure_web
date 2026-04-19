@@ -482,6 +482,11 @@ function handlePastedContent(): void {
   padding: 20px;
 }
 
+.paste-zone :deep(.v-textarea) {
+  overflow: scroll;
+  max-height: 80dvh;
+}
+
 .paste-textarea :deep(.v-field) {
   border-radius: 8px;
 }
