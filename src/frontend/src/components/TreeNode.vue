@@ -186,7 +186,7 @@ function toggleExpand(value: boolean | null = null): void {
 
 <style scoped>
 .tree-node {
-  padding-left: 20px;
+  padding-left: 5px;
 }
 
 .drop-zone {
@@ -203,7 +203,7 @@ function toggleExpand(value: boolean | null = null): void {
 
 .node-header {
   cursor: pointer;
-  padding: 4px 6px;
+  padding: 0;
   display: flex;
   align-items: center;
   white-space: nowrap;
@@ -232,7 +232,7 @@ function toggleExpand(value: boolean | null = null): void {
 .node-label,
 .node-length,
 .node-content {
-  padding: 5px;
+  padding-right: 8px;
 }
 
 .node-tag {
@@ -241,9 +241,11 @@ function toggleExpand(value: boolean | null = null): void {
 }
 
 .children {
-  border-left: 2px solid rgba(255, 255, 255, 0.2);
-  margin-left: 10px;
-  padding-left: 10px;
+  border-left: 2px solid rgba(100, 100, 100, 0.2);
+  margin-left: 3px;
+  padding-left: 8px;
+  /* adds spacing after deeply nested items */
+  padding-bottom: 2px;
 }
 
 .draggable {
@@ -257,6 +259,7 @@ function toggleExpand(value: boolean | null = null): void {
     font-size: 0.9rem;
   }
   .children {
+    margin-left: 0px !important;
     margin-left: 5px;
     padding-left: 8px;
   }
