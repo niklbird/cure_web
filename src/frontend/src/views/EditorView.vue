@@ -295,6 +295,9 @@
 
       <v-col cols="12" md="4" class="right-col">
         <div class="byte-grid-container" ref="bytesRef">
+          <div class="copy-anchor">   <!-- add Copy Button for DER Object -->
+            <v-btn icon="mdi-content-copy" size="small" class="copy-btn" @click="copyDER" />
+          </div>
           <div class="byte-grid" v-if="store.tree.length > 0">
             <span
               v-for="(byte, index) in flatBytes"
@@ -748,6 +751,12 @@ function handleKeydown(event: KeyboardEvent): void {
   if (event.ctrlKey && event.key === 'y') store.redo()
 }
 
+async function copyDER(): Promise<void> {
+  if (flatBytes.value.length === 0) return
+  const hex = flatBytes.value.map(b => dec2hex(b.value)).join(' ')
+  await navigator.clipboard.writeText(hex)
+}
+
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 
 // Check backend reachability before mount
@@ -884,6 +893,29 @@ onUpdated(() => {
 
 .byte-grid > span:nth-child(16n + 9) {
   padding-left: 0.65em;
+}
+
+.copy-anchor {      /* for copy button */
+  position: sticky;
+  top: 0;
+  height: 0;          
+  overflow: visible;  
+  z-index: 1;
+}
+
+.copy-btn {        /* for copy button */
+  position: sticky;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+
+.byte-grid-container:hover .copy-btn {  /* for copy button */
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .highlighted {
