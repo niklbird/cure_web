@@ -68,6 +68,7 @@
 
 <script>
 import logo from "./assets/logo.png"
+import logodark from "./assets/logodark.png"
 import { useDisplay } from 'vuetify'
 import init from '@/rust/cure_web.js'
 
@@ -81,12 +82,16 @@ export default {
     },
     data() {
         return {
-            logo,
+            logoLight: logo,
+            logoDark: logodark,
             drawer: false,
             mode: "light"
         };
     },
     computed: {
+        logo() {
+            return this.mode === 'dark' ? this.logoDark : this.logoLight
+        },
         logoText() {
             if (this.$route.path === '/about') return 'DERP'
             if (this.$route.path === '/notify') return 'RPKI Notify'
