@@ -358,8 +358,13 @@ async function handleDrop(event: DragEvent): Promise<void> {
 
 function handlePastedContent(): void {
   if (!pastedContent.value) return
+  let content = pastedContent.value.trim()
 
-  data.value = pastedContent.value.trim()
+  if (/^[0-9A-Fa-f\s]+$/.test(content)) { //if hex with space
+  content = content.replace(/\s+/g, '')   //remove space/ newline
+  }
+
+  data.value = content
   file.value = { name: 'Pasted Content' } as File
 
   if (store.tabs.length === 0) {
