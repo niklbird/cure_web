@@ -3,7 +3,7 @@ use cure_pp::{cure_object::CureObject, cure_repo::{self, new_repo}, repository_u
 use regex::Regex;
 use tar::Builder;
 use wasm_bindgen::prelude::*;
-use cure_asn1::{rpki::ObjectType, tree_parser::{self, Tree, Types}};
+use cure_asn1::{labeling::Label, labels::LabelName, rpki::rpki::ObjectType, tree_parser::{self, Tree, TypeTag}};
 use std::{fs, io::Cursor};
 
 use flate2::write::GzEncoder;
@@ -188,7 +188,7 @@ impl State{
             return Err(decoded.err().unwrap());
         }
 
-        let tree = cure_asn1::interface::parse_tree(&decoded.unwrap(), "");
+        let tree = cure_asn1::parse_tree(&decoded.unwrap(), "");
 
         if tree.is_none(){
             return Err("Invalid data3".to_string());
@@ -245,7 +245,7 @@ impl State{
         // let rpki_object = RpkiObject::new(self.tree.clone(), self.tree.obj_type.clone());
         let parent_key;
         let mut repo;
-        if self.tree.obj_type == "cer"{
+        if &self.infer_object_type() == "cer"{
             repo = cure_repo::new_parent_child();
             parent_key = repo.child_repos[0].certificate.parent_key.clone();
         }
@@ -258,10 +258,10 @@ impl State{
         }
 
         let child_key = load_random_key(&repo.conf).1;
-        let name = format!("{}.{}", random_fname(), self.tree.obj_type);
+        let name = format!("{}.{}", random_fname(), &self.infer_object_type());
 
         let cure_obj = CureObject::new(
-            ObjectType::from_string(&self.tree.obj_type),
+            ObjectType::from_string(&self.infer_object_type()),
             parent_key,
             child_key,
             self.tree.clone(),
@@ -333,13 +333,13 @@ impl State{
             return Err("Invalid parent".to_string());
         }
 
-        let val = val_to_bytes(typ, value)?;
+        let val = val_to_bytes(typ, value.clone())?;
 
         let label = if label.len() == 0{
             None
         }
         else{
-            Some(label)
+            Some(Label { name: LabelName::Custom(value), index: 0 })
         };
 
         self.tree.add_node(typ, val, parent, label, child_position);
@@ -363,7 +363,7 @@ impl State{
     pub fn adapt_node_all(&mut self, id: usize, new_tag: u8, new_length: Option<usize>, new_content: String) -> Result<(), String>{
         let val = val_to_bytes(new_tag, new_content.clone())?;
         self.tree.tokens.get_mut(&id).unwrap().data = val;
-        self.tree.tokens.get_mut(&id).unwrap().tag = Types::from_type_id(new_tag);
+        self.tree.tokens.get_mut(&id).unwrap().tag = TypeTag::from_type_id(new_tag);
         self.tree.tokens.get_mut(&id).unwrap().tag_u = new_tag;
 
         self.tree.tokens.get_mut(&id).unwrap().visual_tag = vec![new_tag];
@@ -400,8 +400,9 @@ impl State{
 
     #[wasm_bindgen]
     pub fn adapt_node_label(&mut self, id: usize, new_label: String) -> Result<(), String>{
-        self.tree.tokens.get_mut(&id).unwrap().info = new_label.clone();
-        self.tree.labels.insert(new_label.clone(), id);
+        let label = Label { name: LabelName::Custom(new_label), index: 0 };
+        self.tree.tokens.get_mut(&id).unwrap().info = Some(label.clone());
+        self.tree.labels.insert(label.clone(), id);
 
         Ok(())
     }
@@ -438,7 +439,8 @@ impl State{
 
     #[wasm_bindgen]
     pub fn infer_object_type(&self) -> String{
-        self.tree.infer_own_type()
+        let val = self.tree.infer_own_type();
+        val.unwrap().to_string()
     }
 
     #[wasm_bindgen]
@@ -485,7 +487,7 @@ fn val_to_bytes(typ: u8, value: String) -> Result<Vec<u8>, String>{
         0x03 | 0x23 => { // BIT STRING
             // Could be IP
             if value.contains(".") || value.contains(":"){
-                let v = cure_asn1::rpki_utils::parse_ip_from_string(&value);
+                let v = cure_asn1::rpki::rpki_utils::parse_ip_from_string(&value);
                 // v.unwrap();
                 // println!("Failed to parse IP");
                 if v.is_ok(){
