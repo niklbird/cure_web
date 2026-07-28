@@ -53,6 +53,9 @@ services:
     volumes:
       - frontend-dist:/usr/share/nginx/html/app:ro
       - static-files:/usr/share/nginx/html/static:ro
+    environment:
+      - APP_BASE_PATH=/app/cure_web
+      - NGINX_ENVSUBST_FILTER=APP_BASE_PATH
 
 volumes:
   wasm-output:
