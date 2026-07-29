@@ -150,7 +150,7 @@
   <v-dialog v-model="showShareDialog" max-width="600">
     <v-card>
       <v-card-title class="d-flex align-center">
-        <v-icon start>mdi-share-variant</v-icon>
+        <v-icon start style="color: #1976D2">mdi-share-variant</v-icon>
         Share Link
       </v-card-title>
       <v-card-text>
@@ -179,7 +179,7 @@
       </v-card-text>
       <v-card-actions>
         <v-spacer />
-        <v-btn variant="tonal" @click="showShareDialog = false">Close</v-btn>
+        <v-btn style="color: #1976D2" variant="tonal" @click="showShareDialog = false">Close</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
