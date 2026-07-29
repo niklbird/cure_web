@@ -15,12 +15,13 @@ server {
     }
 
     # SPA fallback — any path that doesn't match a file gets index.html
-    location / {
+    location ${APP_BASE_PATH}/ {
+        alias /usr/share/nginx/html/app/;
         try_files $uri $uri/ /index.html;
     }
 
     # ── Django API ───────────────────────────────────────────────────────
-    location /api/ {
+    location ${APP_BASE_PATH}/api/ {
         proxy_pass         http://backend:8000;
         proxy_set_header   Host              $host;
         proxy_set_header   X-Real-IP         $remote_addr;
@@ -30,7 +31,7 @@ server {
     }
 
     # ── Django admin (optional, remove if not needed) ────────────────────
-    location /admin/ {
+    location ${APP_BASE_PATH}/admin/ {
         proxy_pass         http://backend:8000;
         proxy_set_header   Host              $host;
         proxy_set_header   X-Real-IP         $remote_addr;
@@ -39,7 +40,7 @@ server {
     }
 
     # ── Django static files (collected by collectstatic) ─────────────────
-    location /static/ {
+    location ${APP_BASE_PATH}/static/ {
         alias /usr/share/nginx/html/static/;
         expires 30d;
         add_header Cache-Control "public, immutable";
