@@ -308,6 +308,8 @@
               ]"
               :data-node-id="byte.nodeId"
               @click="store.elementHighlighted(byte.nodeId)"
+              @mouseover.stop="store.elementHighlighted(byte.nodeId)"
+              @mouseleave.stop="store.elementHighlighted(-1)"
             >
               {{ dec2hex(byte.value) }}
             </span>

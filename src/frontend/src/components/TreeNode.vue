@@ -12,7 +12,7 @@
   >
     <div
       class="node-header"
-      :class="{ dragover: isDragOverSelf(node.children.length), modified: node.edited }"
+      :class="{ dragover: isDragOverSelf(node.children.length), modified: node.edited, highlighted: isHighlighted }"
       @click="toggleExpand()"
       @dragover.prevent="(event: DragEvent) => onDragOver(event, node.children.length)"
       @dragleave="onDragLeave"
@@ -106,6 +106,8 @@ const hasChildren = computed(() => {
 const isConstructed = computed(() => {
   return props.node.tag[0] === 48 || props.node.tag[0] === 49
 })
+
+const isHighlighted = computed(() => store.highlighted === props.node.id) //Highlighting Hex -> Tree
 
 const isExpanded = computed(() => store.isExpanded(props.node.id))
 
@@ -220,6 +222,10 @@ function toggleExpand(value: boolean | null = null): void {
 
 .node-header.dragover {
   background-color: rgba(255, 255, 0, 0.2);
+}
+
+.node-header.highlighted {
+  background-color: rgba(255, 255, 0, 0.25);
 }
 
 .toggle-icon {
