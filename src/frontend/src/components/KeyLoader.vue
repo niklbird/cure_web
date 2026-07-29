@@ -7,7 +7,7 @@
   >
     <v-card-text class="keyloader-body">
       <div class="keyloader-title">
-        <v-icon class="keyloader-title-icon">mdi-key-variant</v-icon>
+        <v-icon class="keyloader-title-icon" style="color: #1976D2" >mdi-key-variant</v-icon>
         <div class="keyloader-title-text">Key Loader</div>
       </div>
 
@@ -103,7 +103,7 @@
 
     <v-card-actions class="keyloader-actions">
       <v-spacer />
-      <v-btn class="keyloader-close" variant="tonal" @click="emit('close')">CLOSE</v-btn>
+      <v-btn class="keyloader-close" variant="tonal" style="color: #1976D2" @click="emit('close')">CLOSE</v-btn>
     </v-card-actions>
   </v-card>
 </template>
