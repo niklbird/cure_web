@@ -160,6 +160,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useTabsStore } from '@/stores/tabs'
+import { State } from '@/rust/cure_web'
 
 interface ExampleDef {
   type: string
@@ -222,15 +223,28 @@ function open(newTab: boolean): void {
   dialog.value = false
   const type = file.value?.name.endsWith('.json') ? 'json' : 'hex'
 
-  if (newTab) {
-    store.addTab(file.value?.name ?? 'Unnamed')
-  }
+  // derive states here
+  let states: State[] = State.from_any_data(data.value);
+  if (states.length > 0) {
+    for (const state of states) {
+      store.addTab(state.get_name())
+      store.stateSet({
+        tab: store.currentTab,
+        data: state,
+        type: "state"
+      })
+    }
+  } else {
+    if (newTab) {
+      store.addTab(file.value?.name ?? 'Unnamed')
+    }
 
-  store.stateSet({
-    tab: store.currentTab,
-    data: data.value,
-    type: type as any
-  })
+    store.stateSet({
+      tab: store.currentTab,
+      data: data.value,
+      type: type as any
+    })
+  }
 
   clearFile()
   emit('upload')
@@ -323,9 +337,7 @@ function clearFile(): void {
   }
 }
 
-async function handleFileSelect(event: Event): Promise<void> {
-  const target = event.target as HTMLInputElement
-  const files = target.files
+async function processFiles(files: FileList): Promise<void> {
   if (!files) return
   const multiple = files.length > 1
 
@@ -340,21 +352,16 @@ async function handleFileSelect(event: Event): Promise<void> {
   }
 }
 
+async function handleFileSelect(event: Event): Promise<void> {
+  const target = event.target as HTMLInputElement
+  const files = target.files
+  await processFiles(files)
+}
+
 async function handleDrop(event: DragEvent): Promise<void> {
   dragOver.value = false
   const files = event.dataTransfer?.files
-  if (!files) return
-  const multiple = files.length > 1
-
-  for (const f of files) {
-    await processFile(f)
-    if (reportDialog.value) continue
-    if (multiple || store.tabs.length === 0) {
-      open(true)
-    } else {
-      dialog.value = true
-    }
-  }
+  await processFiles(files)
 }
 
 function handlePastedContent(): void {
@@ -362,7 +369,7 @@ function handlePastedContent(): void {
   let content = pastedContent.value.trim()
 
   if (/^[0-9A-Fa-f\s]+$/.test(content)) { //if hex with space
-  content = content.replace(/\s+/g, '')   //remove space/ newline
+    content = content.replace(/\s+/g, '')   //remove space/ newline
   }
 
   data.value = content

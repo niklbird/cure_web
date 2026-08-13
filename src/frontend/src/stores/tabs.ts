@@ -229,6 +229,8 @@ export const useTabsStore = defineStore('tabs', () => {
             tab.state = State.from_stored(context.data)
         } else if (context.type === 'example') {
             tab.state = State.load_example(context.data)
+        } else if (context.type === 'state') {
+            tab.state = context.data
         } else {
             tab.state = new State(context.data)
         }

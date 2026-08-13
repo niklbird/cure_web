@@ -8,7 +8,7 @@ use std::{fs, io::Cursor};
 
 use flate2::write::GzEncoder;
 use flate2::Compression;
-// mod cert; 
+// mod cert;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Node{
@@ -27,7 +27,7 @@ pub fn encode_node(tree: &Tree, node_id: usize) -> Vec<Node>{
     let mut nodes = vec![];
 
     let token = &tree.tokens[&node_id];
-    let (label, tag, length, content) = token.to_string_pretty();
+    let (label, tag, length, content) = token.to_string_pretty();    
     let node = Node{
         label,
         id: node_id,
@@ -61,11 +61,12 @@ fn is_base64(s: &str) -> bool {
     base64_regex.is_match(s)
 }
 
+fn is_xml(s: &str) -> bool {
+    s.starts_with("<?xml") || s.starts_with("<snapshot") || s.starts_with("<delta")
+}
+
 fn is_pem(s: &str) -> bool{
-    if s.starts_with("---"){
-        return true;
-    }
-    false
+    s.starts_with("---")
 }
 
 fn create_tar_gz_in_memory(files: Vec<(String, Vec<u8>)>) -> std::io::Result<Vec<u8>> {
@@ -141,6 +142,7 @@ impl RrdpEntry {
 #[wasm_bindgen]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct State{
+    name: String,
     tree: Tree, 
 }
 
@@ -172,15 +174,15 @@ impl State{
         data = data.replace("\n", "");
 
 
-        if is_hex(&data) == false && is_base64(&data) == false{
+        if !is_hex(&data) && !is_base64(&data) {
             return Err("Invalid data, neither hex nor base64".to_string());
         }
 
         let decoded;
-        if is_hex(&data){
+        if is_hex(&data) {
             decoded = hex::decode(&data).map_err(|_| "Invalid hex data".to_string());
         }
-        else{
+        else {
             decoded = base64::decode(&data).map_err(|_| "Invalid base64 data".to_string());
         }
 
@@ -188,15 +190,72 @@ impl State{
             return Err(decoded.err().unwrap());
         }
 
-        let tree = cure_asn1::parse_tree(&decoded.unwrap(), "");
-
-        if tree.is_none(){
-            return Err("Invalid data3".to_string());
-        }
-
         Ok(State{
-            tree: tree.unwrap(),
+            name: "".to_string(), // TODO
+            tree: Self::parse_tree(&decoded.unwrap())?,
         }) 
+    }
+    
+    fn parse_tree(data: &Vec<u8>) -> Result<Tree, String> {
+        match cure_asn1::parse_tree(data, "") {
+            None => Err("Invalid data3".to_string()),
+            Some(tree) => Ok(tree),
+        }
+    }
+
+    /// Parses and creates a set of states given a data input
+    #[wasm_bindgen]
+    pub fn from_any_data(mut data: String) -> Result<Vec<State>, String> {
+        if is_xml(&data) {
+            // remove possibly leading <?xml ... ?> tag
+            if data.starts_with("<?xml") {
+                if let Some(end) = data.find("?>") {
+                    data.drain(0..end + 2);
+                    data = data.trim_start().to_string();
+                }
+            }
+            // TODO parse as either snapshot or delta
+
+            let mut states = vec![];
+            
+            if data.starts_with("<snapshot") {
+                let Some(snapshot) = cure_asn1::rpki::rrdp::parse_snapshot(&data) else {
+                    return Err("Invalid snapshot".to_string());
+                };
+
+                for entry in snapshot.entries {
+                    let state = State {
+                        name: entry.uri,
+                        tree: Self::parse_tree(&entry.data)?, // FIXME do not return here
+                    };
+                    states.push(state);
+                }
+            }
+            if data.starts_with("<delta") {
+                let Some(delta) = cure_asn1::rpki::rrdp::parse_delta(&data) else {
+                    return Err("Invalid delta".to_string());
+                };
+
+                for entry in delta.publishes {
+                    let state = State {
+                        name: entry.uri,
+                        tree: Self::parse_tree(&entry.data)?, // FIXME do not return here
+                    };
+                    states.push(state);
+                }
+                for entry in delta.modifies {
+                    let state = State {
+                        name: entry.uri,
+                        tree: Self::parse_tree(&entry.data)?, // FIXME do not return here
+                    };
+                    states.push(state);
+                }
+            }
+            
+            Ok(states)
+        } else {
+            Self::new(data).map(|s| vec![s])
+        }
     }
 
     #[wasm_bindgen]
@@ -319,10 +378,15 @@ impl State{
         }
         let mut obj = cure_pp::cure_object::new_object(&conf, &ob_typ);
         obj.fix_fields(&cure_repo::FixingLevel::Full, &conf, None);
-        let state = State{tree: obj.tree};
+        let state = State{name: "".to_string(), tree: obj.tree};
         Ok(state)
     }
 
+    // FIXME work-around
+    #[wasm_bindgen]
+    pub fn get_name(&self) -> String{
+        self.name.clone()
+    }
 
     #[wasm_bindgen]
     pub fn get_nodes(&self) -> String{
@@ -441,9 +505,9 @@ impl State{
     }
 
     #[wasm_bindgen]
-    pub fn infer_object_type(&self) -> String{
+    pub fn infer_object_type(&self) -> String {
         let val = self.tree.infer_own_type();
-        val.unwrap().to_string()
+        format!("{:?}", val.unwrap()).to_lowercase() // FIXME
     }
 
     #[wasm_bindgen]

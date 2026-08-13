@@ -258,12 +258,25 @@
             <div
               style="width: 100%; display: flex; justify-content: space-between; align-items: center;"
             >
-              <div class="text-truncate">{{ tab.name }}</div>
+              <!-- Tooltip for full tab name -->
+              <v-tooltip location="right">
+                <template #activator="{ props }">
+                  <div
+                    class="text-truncate"
+                    style="flex: 1 1 0;"
+                    v-bind="props"
+                  >
+                    {{ tab.name }}
+                  </div>
+                </template>
+                <span>{{ tab.name }}</span>
+              </v-tooltip>
               <v-btn
                 elevation="0"
                 icon="mdi-close"
                 size="x-small"
                 @click.stop="store.tabRemoved(tab.id)"
+                style="flex: none;"
               />
             </div>
           </v-tab>

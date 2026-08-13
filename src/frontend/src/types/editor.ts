@@ -60,7 +60,7 @@ export interface NodeMovePayload {
 export interface StateSetPayload {
     tab: string | null
     data: any
-    type: 'hex' | 'json' | 'example' | 'base64'
+    type: 'state' | 'hex' | 'json' | 'example' | 'base64'
     push?: boolean
 }
 
