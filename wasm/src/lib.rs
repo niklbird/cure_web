@@ -314,7 +314,10 @@ impl State{
             let state = State::new(EXAMPLE_CERT.to_string())?;
             return Ok(state);
         }
-
+        if typ == "csr" {
+            let state = State::new(EXAMPLE_CSR.to_string())?;
+            return Ok(state);
+        }
         let conf = cure_pp::repository_util::create_default_config();
         let ob_typ = ObjectType::from_string(typ);
         if ob_typ == ObjectType::UNKNOWN{
@@ -788,3 +791,6 @@ oyi3B43njTOQ5yOf+1CceWxG1bQVs5ZufpsMljq4Ui0/1lvh+wjChP4kqKOJ2qxq
 4RgqsahDYVvTH9w7jXbyLeiNdd8XM2w9U/t7y0Ff/9yi0GE44Za4rF2LN9d11TPA
 mRGunUHBcnWEvgJBQl9nJEiU0Zsnvgc/ubhPgXRR4Xq37Z0j4r7g1SgEEzwxA57d
 emyPxgcYxn/eR44/KJ4EBs+lVDR3veyJm+kXQ99b21/+jh5Xos1AnX5iItreGCc=";
+
+/// aditional CSR example template (maybe move later)
+pub const EXAMPLE_CSR: &str = "MIHQMHgCAQAwFjEUMBIGA1UEAwwLZXhhbXBsZS5jb20wWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARHXcIQUqtRO+lxrk8sCu6+tB0p23Ayz1z8/PivWiorAZhP3kvdnIKCJ0XvTsxF1V4fASDKehReY8XHxZr6PcXkoAAwCgYIKoZIzj0EAwIDSAAwRQIgRXa011O7BZWvG15AzhQF0ltRw6UQ7IpzqN9YoXo2dToCIQCd2q+39RqDF2RE884IHWcXvRSeWeEhoIIFrCHnQI4Xvg==";

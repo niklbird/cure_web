@@ -202,7 +202,8 @@ const examples: ExampleDef[] = [
   { type: 'cer', label: 'Certificate', icon: 'mdi-certificate-outline' },
   { type: 'asa', label: 'ASPA', icon: 'mdi-link-variant' },
   { type: 'gbr', label: 'Ghostbuster', icon: 'mdi-ghost-outline' },
-  { type: 'tls', label: 'TLS', icon: 'mdi-lock-outline' }
+  { type: 'tls', label: 'TLS', icon: 'mdi-lock-outline' },
+  { type: 'csr', label: 'CSR', icon: 'mdi-file-key-outline' }
 ]
 
 // ─── Methods ──────────────────────────────────────────────────────────────────

@@ -16,7 +16,7 @@ import type {
 
 // ─── Internal types ───────────────────────────────────────────────────────────
 
-interface Tab {
+export interface Tab {
     id: string
     name: string
     state: State | null
@@ -147,7 +147,7 @@ export const useTabsStore = defineStore('tabs', () => {
     }
 
     function tabAdded(context: { id: string; name: string }): void {
-        tabs.value.push(createDefaultTab(context.id, context.name))
+        tabs.value.unshift(createDefaultTab(context.id, context.name))
     }
 
     function tabRenamed(newName: string): void {

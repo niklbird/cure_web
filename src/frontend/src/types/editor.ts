@@ -69,6 +69,7 @@ export interface ContextMenuItem {
     title: string
     action: () => void
     children?: ContextMenuItem[]
+    disabled?: boolean
 }
 
 /** Report from CURE test execution */
