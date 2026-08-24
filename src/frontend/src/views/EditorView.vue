@@ -186,29 +186,6 @@
 
   <v-container fluid>
     <v-row v-if="store.tabs.length > 0">
-      <v-col cols="12" sm="auto">
-        <v-btn @click="load = true" color="primary" :block="isMobile">IMPORT</v-btn>
-      </v-col>
-      <v-col cols="12" sm="auto">
-        <v-btn color="primary" :block="isMobile">
-          EXPORT
-          <MenuComponent
-            :items="formats.map(f => ({ title: f.toUpperCase(), action: () => download(f) }))"
-          />
-        </v-btn>
-      </v-col>
-      <v-col cols="12" sm="auto" v-if="store.tree.length > 0">
-        <v-btn color="primary" @click="openShareDialog" :block="isMobile">
-          <v-icon start>mdi-share-variant</v-icon>
-          SHARE
-        </v-btn>
-      </v-col>
-      <v-col cols="12" sm="auto" v-if="store.tree.length > 0">
-        <v-btn color="primary" @click="showKeyLoader = true" :block="isMobile">
-          <v-icon start>mdi-key-variant</v-icon>
-          KEY LOADER
-        </v-btn>
-      </v-col>
       <v-col
         cols="12"
         sm="auto"
@@ -221,56 +198,46 @@
       <v-col v-if="reports.length > 0" cols="12" sm="auto">
         <v-btn color="primary" @click="showReports = true" :block="isMobile">SHOW REPORTS</v-btn>
       </v-col>
-      <v-col v-if="!isMobile && store.tree.length > 0" cols="12" sm="auto">
-        <v-btn color="primary" @click="store.setAll(!store.anyExpanded)">
-          {{ store.anyExpanded ? 'COLLAPSE ALL' : 'EXPAND ALL' }}
-        </v-btn>
-      </v-col>
       <v-spacer v-if="!isMobile" />
-      <v-col v-if="!isMobile" cols="12" sm="auto">
-        <v-menu offset-y :close-on-content-click="false">
-          <template #activator="{ props: menuProps }">
-            <v-btn icon="mdi-cog" v-bind="menuProps" elevation="0" />
-          </template>
-          <v-card min-width="300">
-            <v-card-text>
-              <v-checkbox v-model="simplify" label="Simplified View" />
-              <v-text-field
-                v-model="backendUrl"
-                label="Backend URL"
-                hint="e.g. http://localhost:21999/"
-                persistent-hint
-              />
-            </v-card-text>
-          </v-card>
-        </v-menu>
-      </v-col>
     </v-row>
 
     <v-row v-if="store.tabs.length > 0" id="tab-content">
-      <v-col id="tabs" cols="12" md="2">
-        <v-tabs
-          v-model="currentTab"
-          :direction="isMobile ? 'horizontal' : 'vertical'"
-          show-arrows
-        >
-          <v-tab v-for="tab in store.tabs" :key="tab.id" :value="tab.id">
-            <div
-              style="width: 100%; display: flex; justify-content: space-between; align-items: center;"
+      <v-col id="tabs" cols="12" class="pa-0">
+        <div class="d-flex align-center">
+          <v-btn
+            icon
+            variant="text"
+            class="flex-shrink-0"
+            @click="load = true"
+          >
+            <v-icon color="primary" size="30">mdi-plus</v-icon>
+          </v-btn>
+          <v-tabs
+            v-model="currentTab"
+            direction="horizontal"
+            show-arrows
+            color="primary"
+          >        
+            <v-tab 
+            v-for="tab in store.tabs" 
+            :key="tab.id" 
+            :value="tab.id"
+            :id="`tab-${tab.id}`"
             >
-              <div class="text-truncate">{{ tab.name }}</div>
-              <v-btn
-                elevation="0"
-                icon="mdi-close"
-                size="x-small"
-                @click.stop="store.tabRemoved(tab.id)"
-              />
-            </div>
-          </v-tab>
-          <v-tab @click="store.addTab('Unnamed')" style="justify-content: center;">
-            <v-icon>mdi-plus</v-icon>
-          </v-tab>
-        </v-tabs>
+              <div
+                style="width: 100%; display: flex; justify-content: space-between; align-items: center;"
+              >
+                <div class="text-truncate">{{ tab.name }}</div>
+                <v-btn
+                  elevation="0"
+                  icon="mdi-close"
+                  size="x-small"
+                  @click.stop="store.tabRemoved(tab.id)"
+                />
+              </div>
+            </v-tab>
+          </v-tabs>
+        </div>
       </v-col>
 
       <v-col cols="12" md class="center-col">
@@ -280,24 +247,99 @@
         >
           <MenuComponent :items="contextItems" />
         </div>
-        <div class="asn-tree">
-          <TreeNodeComponent
-            v-if="store.tree.length > 0"
-            :node="findRoot()"
-            @rightclick="(x: number, y: number, id: number) => openMenu(x, y, id)"
-            :simplify="simplify || isMobile"
-          />
-          <p v-else class="text-h6 text-center pa-5">
-            No ASN.1 data loaded. Please upload a file or select an example.
-          </p>
+
+        <div class="tree-toolbar">
+          <v-btn
+            variant="text"
+            size="small"
+            :disabled="store.tree.length === 0"
+            @click="showKeyLoader = true"
+          >
+            <v-icon color="primary" start size="18">mdi-key</v-icon>
+            Key Loader
+          </v-btn>
+
+          <v-btn
+            variant="text"
+            size="small"
+            :disabled="store.tree.length === 0"
+            @click="store.setAll(!store.anyExpanded)"
+          >
+            <v-icon
+              start
+              color="primary"
+              size="12"
+              :style="{ transform: store.anyExpanded ? 'none' : 'rotate(180deg)' }"
+            >
+              mdi-triangle
+            </v-icon>
+            {{ store.anyExpanded ? 'Collapse All' : 'Expand All' }}
+          </v-btn>
+
+          <v-btn
+            v-if="!isMobile"
+            variant="text"
+            size="small"
+            @click="simplify = !simplify"
+          >
+            <v-icon color="primary" start size="18">{{ simplify ? 'mdi-eye' : 'mdi-eye-outline' }}</v-icon>
+            Simplified View
+          </v-btn>
+        </div>
+
+        <div class="asn-tree-wrapper">
+          <div class="asn-tree">
+            <TreeNodeComponent
+              v-if="store.tree.length > 0"
+              :node="findRoot()"
+              @rightclick="(x: number, y: number, id: number) => openMenu(x, y, id)"
+              :simplify="simplify || isMobile"
+            />
+            <p v-else class="text-h6 text-center pa-5">
+              No ASN.1 data loaded. Please upload a file or select an example.
+            </p>
+          </div>
         </div>
       </v-col>
 
       <v-col cols="12" md="4" class="right-col">
+
+        <div class="tree-toolbar">
+          <v-menu>
+            <template #activator="{ props: menuProps }">
+              <v-btn
+                variant="text"
+                size="small"
+                :disabled="store.tree.length === 0"
+                v-bind="menuProps"
+              >
+                <v-icon color="primary" start size="18">mdi-download</v-icon>
+                Export
+              </v-btn>
+            </template>
+            <v-list density="compact">
+              <v-list-item
+                v-for="f in formats"
+                :key="f"
+                @click="download(f)"
+              >
+                <v-list-item-title class="text-body-2">{{ f.toUpperCase() }}</v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </v-menu>
+
+          <v-btn
+            variant="text"
+            size="small"
+            :disabled="store.tree.length === 0"
+            @click="openShareDialog"
+          >
+            <v-icon color="primary" start size="18">mdi-share-variant</v-icon>
+            Share
+          </v-btn>
+        </div>
+
         <div class="byte-grid-container" ref="bytesRef">
-          <div class="copy-anchor">   <!-- add Copy Button for DER Object -->
-            <v-btn icon="mdi-content-copy" size="small" class="copy-btn" @click="copyDER" />
-          </div>
           <div class="byte-grid" v-if="store.tree.length > 0">
             <span
               v-for="(byte, index) in flatBytes"
@@ -336,7 +378,9 @@ import ElementMenu from '@/components/ElementMenu.vue'
 import MenuComponent from '@/components/MenuComponent.vue'
 import KeyLoader from '@/components/KeyLoader.vue'
 
+import type { Tab } from '@/stores/tabs'
 import type { TreeNode, CureReport, ContextMenuItem } from '@/types/editor'
+
 
 // ─── Setup ────────────────────────────────────────────────────────────────────
 
@@ -367,6 +411,7 @@ const shareUrl = ref('')
 const shareUrlTooLong = ref(false)
 const copied = ref(false)
 const showKeyLoader = ref(false)
+const menuOpen = ref(false)
 
 const activatorRef = ref<HTMLDivElement | null>(null)
 const bytesRef = ref<HTMLDivElement | null>(null)
@@ -860,6 +905,7 @@ onUpdated(() => {
 .center-col {
   overflow: scroll;
 }
+
 /* prevent right col with byte-grid from taking too little space on medium
   screens and too much space on wide screens */
 @media (min-width: 960px) {
@@ -873,7 +919,7 @@ onUpdated(() => {
   height: 84vh;
   font-family: monospace;
   font-size: 1rem;
-  padding: 10px;
+  padding: 6px;
   overflow: scroll;
   position: sticky;
   border: 1px solid #ccc;
@@ -895,24 +941,6 @@ onUpdated(() => {
 
 .byte-grid > span:nth-child(16n + 9) {
   padding-left: 0.65em;
-}
-
-.copy-anchor {      /* for copy button */
-  position: sticky;
-  top: 0;
-  height: 0;          
-  overflow: visible;  
-  z-index: 1;
-}
-
-.copy-btn {        /* for copy button */
-  position: sticky;
-  top: 8px;
-  right: 8px;
-  z-index: 1;
-  opacity: 0;
-  transition: opacity 0.15s ease;
-  pointer-events: none;
 }
 
 .byte-grid-container:hover .copy-btn {  /* for copy button */
@@ -950,5 +978,30 @@ onUpdated(() => {
   .bytes {
     height: 50vh;
   }
+}
+
+.asn-tree-wrapper {
+  position: relative;
+}
+
+.expand-toggle-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 2;
+}
+
+.tree-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
+  padding: 1px 8px 1px;
+  border-top: 1px solid #ccc;
+  margin-bottom: 1px;
+}
+
+.tree-toolbar .v-btn {
+  text-transform: none;
 }
 </style>
