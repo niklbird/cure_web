@@ -2,6 +2,7 @@ use chrono::Utc;
 use cure_pp::{cure_object::CureObject, cure_repo::{self, new_repo}, repository_util::{self, load_random_key, random_fname}};
 use regex::Regex;
 use tar::Builder;
+#[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 use cure_asn1::{labeling::Label, labels::LabelName, rpki::rpki::ObjectType, tree_parser::{self, Tree, TypeTag}};
 use std::{fs, io::Cursor};
@@ -114,39 +115,39 @@ fn create_tar_gz_in_memory(files: Vec<(String, Vec<u8>)>) -> std::io::Result<Vec
 
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-#[wasm_bindgen]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 pub struct RrdpEntry{
     uri: String,
     content: String,
 }
 
-#[wasm_bindgen]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 impl RrdpEntry {
-    #[wasm_bindgen(constructor)]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen(constructor))]
     pub fn new(uri: String, content: String) -> RrdpEntry {
         RrdpEntry { uri, content }
     }
 
-    #[wasm_bindgen(getter)]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen(getter))]
     pub fn uri(&self) -> String {
         self.uri.clone()
     }
 
-    #[wasm_bindgen(getter)]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen(getter))]
     pub fn content(&self) -> String {
         self.content.clone()
     }
 }
 
-#[wasm_bindgen]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct State{
     tree: Tree, 
 }
 
-#[wasm_bindgen]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 impl State{
-    #[wasm_bindgen(constructor)]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen(constructor))]
     pub fn new(data: String) -> Result<State, String>{
         // Takes either hex or base64 encoded data is input
         let mut data = data.trim().to_string();
@@ -199,7 +200,12 @@ impl State{
         }) 
     }
 
-    #[wasm_bindgen]
+    pub fn export_human_readable(&self) -> String{
+        let root = self.tree.get_root();
+        self.tree.to_json(root.id).to_string()
+    }
+
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
     pub fn drag_node(&mut self, id: usize, new_parent: usize, child_index: usize) -> Result<(), String> 
     {
         if self.tree.tokens.get(&new_parent).is_none(){
@@ -231,7 +237,7 @@ impl State{
 
 
     
-    #[wasm_bindgen]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
     pub fn repositorify(&self) -> Vec<u8>{
         let (repo_files, tal, ca_cert) = self.into_rpki_repo();
         let mut files = repo_files.clone();
@@ -302,7 +308,7 @@ impl State{
     }
 
 
-    #[wasm_bindgen]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
     pub fn load_example(typ: &str) -> Result<State, String>{
         if typ == "tls"{
             let state = State::new(EXAMPLE_CERT.to_string())?;
@@ -321,13 +327,13 @@ impl State{
     }
 
 
-    #[wasm_bindgen]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
     pub fn get_nodes(&self) -> String{
         let nodes = encode_tree(&self.tree);
         serde_json::to_string(&nodes).unwrap().clone()
     }
 
-    #[wasm_bindgen]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
     pub fn add_node(&mut self, typ: u8, value: String, parent: usize, label: String, child_position: Option<usize>) -> Result<(), String>{
         if self.tree.tokens.get(&parent).is_none(){
             return Err("Invalid parent".to_string());
@@ -346,7 +352,7 @@ impl State{
         Ok(())
     }
 
-    #[wasm_bindgen]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
     pub fn adapt_node_content(&mut self, id: usize, new_content: String) -> Result<(), String>{
         let val = val_to_bytes(self.tree.tokens[&id].tag_u, new_content.clone())?;
         self.tree.tokens.get_mut(&id).unwrap().data = val;
@@ -359,7 +365,7 @@ impl State{
     }
 
 
-    #[wasm_bindgen]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
     pub fn adapt_node_all(&mut self, id: usize, new_tag: u8, new_length: Option<usize>, new_content: String) -> Result<(), String>{
         let val = val_to_bytes(new_tag, new_content.clone())?;
         self.tree.tokens.get_mut(&id).unwrap().data = val;
@@ -381,7 +387,7 @@ impl State{
         Ok(())
     }
 
-    #[wasm_bindgen]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
     pub fn adapt_node_length(&mut self, id: usize, new_length: usize) -> Result<(), String>{
         self.tree.tokens.get_mut(&id).unwrap().visual_length = new_length;
         self.tree.tokens.get_mut(&id).unwrap().manipulated_length = true;
@@ -390,7 +396,7 @@ impl State{
         Ok(())
     }
 
-    #[wasm_bindgen]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
     pub fn adapt_node_tag(&mut self, id: usize, tag: u8) -> Result<(), String>{
         self.tree.tokens.get_mut(&id).unwrap().visual_tag = vec![tag];
         self.tree.tokens.get_mut(&id).unwrap().manipulated = true;
@@ -398,7 +404,7 @@ impl State{
         Ok(())
     }
 
-    #[wasm_bindgen]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
     pub fn adapt_node_label(&mut self, id: usize, new_label: String) -> Result<(), String>{
         let label = Label { name: LabelName::Custom(new_label), index: 0 };
         self.tree.tokens.get_mut(&id).unwrap().info = Some(label.clone());
@@ -408,7 +414,7 @@ impl State{
     }
 
 
-    #[wasm_bindgen]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
     pub fn remove_node(&mut self, id: usize) -> Result<(), String>{
         self.tree.taint_parents(id);
         self.tree.deep_delete(id);
@@ -416,34 +422,34 @@ impl State{
         Ok(())
     }
 
-    #[wasm_bindgen]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
     pub fn export_bin(&self) -> Vec<u8>{
         self.tree.encode()
     }
 
-    #[wasm_bindgen]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
     pub fn export_base64(&self) -> String{
         base64::encode(self.tree.encode())
     }
 
-    #[wasm_bindgen]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
     pub fn encode_store(&self) -> String{
         serde_json::to_string(&self).unwrap()
     }
 
-    #[wasm_bindgen]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
     pub fn from_stored(encoded: String) -> Result<State, String>{
         let state: State = serde_json::from_str(&encoded).map_err(|_| "Invalid data".to_string())?;
         Ok(state)
     }
 
-    #[wasm_bindgen]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
     pub fn infer_object_type(&self) -> String{
         let val = self.tree.infer_own_type();
         val.unwrap().to_string()
     }
 
-    #[wasm_bindgen]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
     pub fn get_all_oids(&self) -> String{
         let oids = tree_parser::rpki_oid_map().keys().cloned().collect::<Vec<&str>>();
         serde_json::to_string(&oids).unwrap()
