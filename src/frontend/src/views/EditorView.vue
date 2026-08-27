@@ -249,6 +249,27 @@
         </div>
 
         <div class="tree-toolbar">
+
+          <v-btn
+            variant="text"
+            size="small"
+            :disabled="!store.canUndo"
+            @click="store.undo()"
+          >
+            <v-icon color="primary" start size="18">mdi-undo</v-icon>
+            Undo
+          </v-btn>
+
+          <v-btn
+            variant="text"
+            size="small"
+            :disabled="!store.canRedo"
+            @click="store.redo()"
+          >
+            <v-icon color="primary" start size="18">mdi-redo</v-icon>
+            Redo
+          </v-btn>
+
           <v-btn
             variant="text"
             size="small"
@@ -346,10 +367,12 @@
               :key="index"
               :class="[
                 byte.type,
-                highlightedNodeAndDescendants.has(byte.nodeId) ? 'highlighted' : ''
+                highlightedNodeAndDescendants.has(byte.nodeId) ? 'highlighted' : '',
+                lockedNodeAndDescendants.has(byte.nodeId) ? 'locked' : '',
+                subHighlightedNodeAndDescendants.has(byte.nodeId) ? 'sub-highlighted' : ''
               ]"
               :data-node-id="byte.nodeId"
-              @click="store.elementHighlighted(byte.nodeId)"
+              @click.stop="toggleLock(byte.nodeId)"
               @mouseover.stop="store.elementHighlighted(byte.nodeId)"
               @mouseleave.stop="store.elementHighlighted(-1)"
             >
@@ -491,26 +514,40 @@ const flatBytes = computed<FlatByte[]>(() => {
   return bytes
 })
 
+function collectSubtree(rootId: number): Set<number> {
+  const set = new Set<number>()
+  const queue = [rootId]
+  while (queue.length) {
+    const id = queue.shift()!
+    if (set.has(id)) continue
+    set.add(id)
+    const node = store.getNodeFromId(id)
+    if (node?.children) queue.push(...node.children)
+  }
+  return set
+}
+
 const highlightedNodeAndDescendants = computed<Set<number>>(() => {
-  const highlightedId = store.highlighted
-  const highlightSet = new Set<number>()
-
-  if (highlightedId === null || highlightedId === undefined || highlightedId === -1) {
-    return highlightSet
-  }
-
-  const collectChildren = (nodeId: number) => {
-    if (highlightSet.has(nodeId)) return
-    highlightSet.add(nodeId)
-    const node = store.getNodeFromId(nodeId)
-    if (node?.children) {
-      for (const childId of node.children) collectChildren(childId)
-    }
-  }
-
-  collectChildren(highlightedId)
-  return highlightSet
+  const id = store.highlighted
+  if (id === null || id === undefined || id === -1) return new Set()
+  return collectSubtree(id)
 })
+
+const lockedNodeAndDescendants = computed<Set<number>>(() => {
+  return store.locked !== -1 ? collectSubtree(store.locked) : new Set()
+})
+
+const subHighlightedNodeAndDescendants = computed<Set<number>>(() => {
+  if (store.locked === -1) return new Set()
+  const id = store.highlighted
+  if (id === -1 || id === store.locked) return new Set()
+  if (!store.isDescendant(store.locked, id)) return new Set()
+  return collectSubtree(id)
+})
+
+function toggleLock(id: number): void {
+  store.elementLocked(store.locked === id ? -1 : id)
+}
 
 // ─── Watchers ─────────────────────────────────────────────────────────────────
 
@@ -523,16 +560,33 @@ watch(
 
     if (!bytesRef.value) return
     const byteContainer = bytesRef.value
-    const targetElement = byteContainer.querySelector(`span[data-node-id="${id}"]`) as HTMLElement | null
+    const elements = byteContainer.querySelectorAll(
+      `span[data-node-id="${id}"]`
+    ) as NodeListOf<HTMLElement>
 
-    if (targetElement) {
-      const containerHeight = byteContainer.clientHeight
-      const targetTopRelativeToContainer = targetElement.offsetTop
-      const scrollTop =
-        targetTopRelativeToContainer - containerHeight / 2 + targetElement.clientHeight / 2
+    if (elements.length === 0) return
 
-      byteContainer.scrollTo({ top: scrollTop, behavior: 'smooth' })
-    }
+    const firstElement = elements[0]
+    const lastElement = elements[elements.length - 1]
+
+    const containerRect = byteContainer.getBoundingClientRect()
+    const firstRect = firstElement.getBoundingClientRect()
+    const lastRect = lastElement.getBoundingClientRect()
+
+    const isFullyVisible =
+      firstRect.top >= containerRect.top &&
+      lastRect.bottom <= containerRect.bottom
+
+    if (isFullyVisible) return
+
+    const containerHeight = byteContainer.clientHeight
+    const rangeTop = firstElement.offsetTop
+    const rangeBottom = lastElement.offsetTop + lastElement.clientHeight
+    const rangeCenter = (rangeTop + rangeBottom) / 2
+
+    const scrollTop = rangeCenter - containerHeight / 2
+
+    byteContainer.scrollTo({ top: scrollTop, behavior: 'smooth' })
   }
 )
 
@@ -796,6 +850,7 @@ function handleReportLoaded(reportData: { name: string; state: string; report: a
 function handleKeydown(event: KeyboardEvent): void {
   if (event.ctrlKey && event.key === 'z') store.undo()
   if (event.ctrlKey && event.key === 'y') store.redo()
+  if (event.key === 'Escape') store.elementLocked(-1)
 }
 
 async function copyDER(): Promise<void> {
@@ -949,7 +1004,17 @@ onUpdated(() => {
 }
 
 .highlighted {
-  background-color: gray;
+  background-color:#fffbbc;
+  font-weight: bold;
+}
+
+.locked {
+  background-color: #ffee00;
+  font-weight: bold;
+}
+
+.sub-highlighted {
+  background-color: #ffc400;
   font-weight: bold;
 }
 

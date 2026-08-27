@@ -12,12 +12,18 @@
   >
     <div
       class="node-header"
-      :class="{ dragover: isDragOverSelf(node.children.length), modified: node.edited, highlighted: isHighlighted }"
-      @click="toggleExpand()"
+      :class="{ 
+        dragover: isDragOverSelf(node.children.length), 
+        modified: node.edited, 
+        highlighted: isHighlighted && !isLocked,
+        locked: isLocked,
+        'sub-highlighted': isSubHighlighted
+        }"
+      @click="onHeaderClick"
       @dragover.prevent="(event: DragEvent) => onDragOver(event, node.children.length)"
       @dragleave="onDragLeave"
     >
-      <span v-if="hasChildren || isConstructed" class="toggle-icon">
+      <span v-if="hasChildren || isConstructed" class="toggle-icon" @click.stop="toggleExpand()">
         {{ isExpanded ? '▼' : '▶' }}
       </span>
       <span v-if="node.tag && !simplify" class="node-tag tag" ref="tagRef">{{ node.tag[1] }}</span>
@@ -108,6 +114,13 @@ const isConstructed = computed(() => {
 })
 
 const isHighlighted = computed(() => store.highlighted === props.node.id) //Highlighting Hex -> Tree
+const isLocked = computed(() => store.locked === props.node.id)
+const isSubHighlighted = computed(() =>
+  store.locked !== -1 &&
+  store.locked !== props.node.id &&
+  store.highlighted === props.node.id &&
+  store.isDescendant(store.locked, props.node.id)
+)
 
 const isExpanded = computed(() => store.isExpanded(props.node.id))
 
@@ -130,6 +143,11 @@ function handleTouchStart(_event: TouchEvent): void {
 
 function handleTouchEnd(_event: TouchEvent): void {
   // placeholder
+}
+
+function onHeaderClick(event: MouseEvent): void {
+  event.stopPropagation() // keeps this click from reaching any future "click outside" listener
+  store.elementLocked(store.locked === props.node.id ? -1 : props.node.id)
 }
 
 function onDragStart(event: DragEvent): void {
@@ -225,7 +243,15 @@ function toggleExpand(value: boolean | null = null): void {
 }
 
 .node-header.highlighted {
-  background-color: rgba(255, 255, 0, 0.25);
+  background-color: #fffbbc;
+}
+
+.node-header.locked {
+  background-color: #ffee00;
+}
+
+.node-header.sub-highlighted {
+  background-color: #ffc400; /* hover color for sub-parts */
 }
 
 .toggle-icon {

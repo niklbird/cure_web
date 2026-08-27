@@ -24,6 +24,7 @@ export interface Tab {
     positions: Record<number, [number, number]>
     expanded: Record<number, boolean>
     highlighted: number
+    locked: number
     target: [number, number]
     isDragging: boolean
     activeDropContextId: number | null
@@ -54,6 +55,7 @@ function createDefaultTab(id = '', name = ''): Tab {
         positions: {},
         expanded: {},
         highlighted: -1,
+        locked: -1,
         target: [-1, -1],
         isDragging: false,
         activeDropContextId: null,
@@ -93,10 +95,14 @@ export const useTabsStore = defineStore('tabs', () => {
     const tree = computed(() => currentTabObj.value.tree)
     const positions = computed(() => currentTabObj.value.positions)
     const highlighted = computed(() => currentTabObj.value.highlighted)
+    const locked = computed(() => currentTabObj.value.locked)
     const target = computed(() => currentTabObj.value.target)
     const draggedNodeId = computed(() => currentTabObj.value.draggedNodeId)
     const isDragging = computed(() => currentTabObj.value.isDragging)
     const activeDropContextId = computed(() => currentTabObj.value.activeDropContextId)
+
+    const canUndo = computed(() => currentTabObj.value.count >= 2)
+    const canRedo = computed(() => currentTabObj.value.count < currentTabObj.value.mutations.length)
 
     const anyExpanded = computed(() => {
         return Object.values(currentTabObj.value.expanded).some(v => v)
@@ -207,6 +213,11 @@ export const useTabsStore = defineStore('tabs', () => {
     function elementHighlighted(id: number): void {
         const tab = tabs.value.find(t => t.id === currentTab.value)
         if (tab) tab.highlighted = id
+    }
+
+    function elementLocked(id: number): void {
+    const tab = tabs.value.find(t => t.id === currentTab.value)
+    if (tab) tab.locked = id
     }
 
     function mutationsAppended(context: [string, any][]): void {
@@ -383,11 +394,14 @@ export const useTabsStore = defineStore('tabs', () => {
         tree,
         positions,
         highlighted,
+        locked,
         target,
         draggedNodeId,
         isDragging,
         activeDropContextId,
         anyExpanded,
+        canUndo,
+        canRedo,
 
         // Getter functions
         getNodeFromId,
@@ -408,6 +422,7 @@ export const useTabsStore = defineStore('tabs', () => {
         draggingSet,
         activeDropContextSet,
         elementHighlighted,
+        elementLocked,
         mutationsAppended,
         mutationHistoryCounterSet,
         stateSet,
