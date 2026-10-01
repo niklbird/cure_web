@@ -384,14 +384,19 @@ function open(newTab: boolean): void {
     store.addTab(fileName.value || 'Unnamed')
   }
 
-  store.stateSet({
-    tab: store.currentTab,
-    data: data.value,
-    type: dataType.value
-  })
+  try {
+    store.stateSet({
+      tab: store.currentTab,
+      data: data.value,
+      type: dataType.value
+    })
 
-  clearFile()
-  emit('upload')
+    clearFile()
+    emit('upload')
+  } catch (error) {
+    console.error('Failed to load content:', error)
+    showError(getUserFriendlyError(error))
+  }
 }
 
 function parseReport(text: string): ReportFileData | null {
@@ -595,16 +600,14 @@ async function handleFiles(
 }
 
 function handlePastedContent(): void {
-  const content = normalizePastedContent(
-    pastedContent.value
-  )
+  const content = pastedContent.value.trim()
 
   if (!content) {
+    showError('Please paste some content first.')
     return
   }
 
-  data.value = content
-
+  data.value = normalizePastedContent(content)
   file.value = null
 
   if (store.tabs.length === 0) {
@@ -646,6 +649,35 @@ function clearFile(): void {
 function showError(message: string): void {
   errorMessage.value = message
   errorSnackbar.value = true
+}
+
+function getUserFriendlyError(error: unknown): string {
+  const message =
+    error instanceof Error
+      ? error.message
+      : String(error)
+
+  if (message.includes('neither hex nor base64')) {
+    return 'Invalid content. Please paste a valid hexadecimal or Base64 value.'
+  }
+
+  if (message.includes('Invalid hex data')) {
+    return 'Invalid hexadecimal data.'
+  }
+
+  if (message.includes('Invalid base64 data')) {
+    return 'Invalid Base64 data.'
+  }
+
+  if (message.includes('Invalid data3')) {
+    return 'The content was decoded, but it is not a valid RPKI object.'
+  }
+
+  if (message.includes('looked like PEM')) {
+    return 'The PEM data is incomplete or invalid.'
+  }
+
+  return 'Unable to process the content. Please check the input and try again.'
 }
 </script>
 
