@@ -3,14 +3,26 @@
     <!-- Dialog: open in new tab or current tab -->
     <v-dialog v-model="dialog" max-width="400">
       <v-card class="confirm-dialog">
-        <v-card-title class="text-h6">Open in new tab?</v-card-title>
+        <v-card-title class="text-h6">
+          Open in new tab?
+        </v-card-title>
+
         <v-card-text class="text-body-1">
           Do you want to open the file in a new tab?
         </v-card-text>
+
         <v-card-actions class="justify-end pa-4">
-          <v-btn variant="tonal" @click="dialog = false">Cancel</v-btn>
-          <v-btn variant="tonal" @click="open(false)">This tab</v-btn>
-          <v-btn variant="flat" color="primary" @click="open(true)">New tab</v-btn>
+          <v-btn variant="tonal" @click="dialog = false">
+            Cancel
+          </v-btn>
+
+          <v-btn variant="tonal" @click="open(false)">
+            This tab
+          </v-btn>
+
+          <v-btn variant="flat" color="primary" @click="open(true)">
+            New tab
+          </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -22,18 +34,40 @@
           <v-icon start>mdi-file-document-outline</v-icon>
           Report File Detected
         </v-card-title>
+
         <v-card-text class="text-body-1">
           <p>This file contains a saved report with an ASN.1 object.</p>
+
           <v-divider class="my-3" />
+
           <div class="report-info">
-            <div><strong>Name:</strong> {{ reportInfo.name }}</div>
-            <div><strong>Exported:</strong> {{ reportInfo.exportedAt }}</div>
-            <div><strong>Test Results:</strong> {{ reportInfo.resultCount }} RP(s) tested</div>
+            <div>
+              <strong>Name:</strong>
+              {{ reportInfo.name }}
+            </div>
+
+            <div>
+              <strong>Exported:</strong>
+              {{ reportInfo.exportedAt }}
+            </div>
+
+            <div>
+              <strong>Test Results:</strong>
+              {{ reportInfo.resultCount }} RP(s) tested
+            </div>
           </div>
         </v-card-text>
+
         <v-card-actions class="justify-end pa-4">
-          <v-btn variant="tonal" @click="reportDialog = false">Cancel</v-btn>
-          <v-btn variant="flat" color="primary" @click="loadReportObject(true)">
+          <v-btn variant="tonal" @click="reportDialog = false">
+            Cancel
+          </v-btn>
+
+          <v-btn
+            variant="flat"
+            color="primary"
+            @click="loadReportObject(true)"
+          >
             <v-icon start>mdi-plus</v-icon>
             Load in New Tab
           </v-btn>
@@ -41,17 +75,24 @@
       </v-card>
     </v-dialog>
 
+    <!-- Main upload card -->
     <v-card class="upload-card" elevation="0">
       <!-- Tab Navigation -->
-      <v-tabs v-model="activeTab" color="primary" class="upload-tabs">
+      <v-tabs
+        v-model="activeTab"
+        color="primary"
+        class="upload-tabs"
+      >
         <v-tab value="file" class="tab-item">
           <v-icon start>mdi-file-upload-outline</v-icon>
           File
         </v-tab>
+
         <v-tab value="paste" class="tab-item">
           <v-icon start>mdi-content-paste</v-icon>
           Paste
         </v-tab>
+
         <v-tab value="example" class="tab-item">
           <v-icon start>mdi-file-document-outline</v-icon>
           Examples
@@ -65,39 +106,56 @@
         <v-window-item value="file">
           <div
             class="drop-zone"
-            :class="{ 'drop-zone--active': dragOver, 'drop-zone--has-file': file }"
+            :class="{
+              'drop-zone--active': dragOver,
+              'drop-zone--has-file': file
+            }"
             @dragover.prevent="dragOver = true"
             @dragleave.prevent="dragOver = false"
             @drop.prevent="handleDrop"
             @click="triggerFileInput"
           >
             <input
-              type="file"
               ref="fileInputRef"
-              style="display: none"
-              @change="handleFileSelect"
+              type="file"
+              hidden
               multiple
+              @change="handleFileSelect"
             />
 
             <div class="drop-zone__content">
               <v-icon
-                :icon="file ? 'mdi-file-check-outline' : 'mdi-cloud-upload-outline'"
+                :icon="
+                  file
+                    ? 'mdi-file-check-outline'
+                    : 'mdi-cloud-upload-outline'
+                "
                 :color="file ? 'success' : 'primary'"
                 size="48"
                 class="drop-zone__icon"
               />
+
               <div v-if="!file" class="drop-zone__text">
-                <span class="drop-zone__title">Drop files here</span>
-                <span class="drop-zone__subtitle">or click to browse</span>
+                <span class="drop-zone__title">
+                  Drop files here
+                </span>
+
+                <span class="drop-zone__subtitle">
+                  or click to browse
+                </span>
               </div>
+
               <div v-else class="drop-zone__file">
-                <span class="drop-zone__filename">{{ file.name }}</span>
+                <span class="drop-zone__filename">
+                  {{ file.name }}
+                </span>
+
                 <v-btn
                   icon="mdi-close"
                   size="x-small"
                   variant="text"
-                  @click.stop="clearFile"
                   class="drop-zone__clear"
+                  @click.stop="clearFile"
                 />
               </div>
             </div>
@@ -121,13 +179,14 @@
               hide-details
               class="paste-textarea"
             />
+
             <v-btn
               color="primary"
               variant="flat"
-              :disabled="!pastedContent"
-              @click="handlePastedContent"
-              class="mt-4"
               block
+              class="mt-4"
+              :disabled="!pastedContent.trim()"
+              @click="handlePastedContent"
             >
               <v-icon start>mdi-check</v-icon>
               Load Content
@@ -143,22 +202,47 @@
               :key="example.type"
               variant="tonal"
               color="primary"
-              @click="loadExample(example.type)"
               class="example-btn"
+              @click="loadExample(example.type)"
             >
-              <v-icon start>{{ example.icon }}</v-icon>
+              <v-icon start>
+                {{ example.icon }}
+              </v-icon>
+
               {{ example.label }}
             </v-btn>
           </div>
-          <p class="examples-hint">Load a sample RPKI object to explore the editor</p>
+
+          <p class="examples-hint">
+            Load a sample RPKI object to explore the editor
+          </p>
         </v-window-item>
       </v-window>
     </v-card>
+
+    <!-- Error Snackbar -->
+    <v-snackbar
+      v-model="errorSnackbar"
+      color="error"
+      location="bottom"
+      :timeout="4000"
+    >
+      {{ errorMessage }}
+
+      <template #actions>
+        <v-btn
+          variant="text"
+          @click="errorSnackbar = false"
+        >
+          Close
+        </v-btn>
+      </template>
+    </v-snackbar>
   </v-container>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useTabsStore } from '@/stores/tabs'
 
 interface ExampleDef {
@@ -172,201 +256,356 @@ interface ReportFileData {
   exportedAt?: string
   name: string
   state: string
-  report: any[]
+  report: unknown[]
 }
+
+type FileResult = 'ok' | 'report' | 'error'
+type DataType = 'hex' | 'json'
 
 const store = useTabsStore()
 
 const emit = defineEmits<{
   upload: []
-  reportLoaded: [data: { name: string; state: string; report: any[] }]
+  reportLoaded: [
+    data: {
+      name: string
+      state: string
+      report: unknown[]
+    }
+  ]
 }>()
 
-// ─── State ────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
+// State
 
 const activeTab = ref('file')
+
 const data = ref<string | null>(null)
 const file = ref<File | null>(null)
+
 const pastedContent = ref('')
 const dragOver = ref(false)
+
 const dialog = ref(false)
 const reportDialog = ref(false)
+
 const reportData = ref<ReportFileData | null>(null)
-const reportInfo = ref({ name: '', exportedAt: '', resultCount: 0 })
+
+const reportInfo = ref({
+  name: '',
+  exportedAt: '',
+  resultCount: 0
+})
+
 const fileInputRef = ref<HTMLInputElement | null>(null)
 
+// Error snackbar
+const errorSnackbar = ref(false)
+const errorMessage = ref('')
+
+// -----------------------------------------------------------------------------
+// Derived state
+
+const fileName = computed(() => file.value?.name ?? '')
+
+const dataType = computed<DataType>(() => {
+  return file.value?.name.toLowerCase().endsWith('.json')
+    ? 'json'
+    : 'hex'
+})
+
+// -----------------------------------------------------------------------------
+// Examples
+
 const examples: ExampleDef[] = [
-  { type: 'roa', label: 'ROA', icon: 'mdi-shield-check-outline' },
-  { type: 'mft', label: 'Manifest', icon: 'mdi-format-list-checks' },
-  { type: 'crl', label: 'CRL', icon: 'mdi-close-circle-outline' },
-  { type: 'cer', label: 'Certificate', icon: 'mdi-certificate-outline' },
-  { type: 'asa', label: 'ASPA', icon: 'mdi-link-variant' },
-  { type: 'gbr', label: 'Ghostbuster', icon: 'mdi-ghost-outline' },
-  { type: 'tls', label: 'TLS', icon: 'mdi-lock-outline' },
-  { type: 'csr', label: 'CSR', icon: 'mdi-file-key-outline' }
+  {
+    type: 'roa',
+    label: 'ROA',
+    icon: 'mdi-shield-check-outline'
+  },
+  {
+    type: 'mft',
+    label: 'Manifest',
+    icon: 'mdi-format-list-checks'
+  },
+  {
+    type: 'crl',
+    label: 'CRL',
+    icon: 'mdi-close-circle-outline'
+  },
+  {
+    type: 'cer',
+    label: 'Certificate',
+    icon: 'mdi-certificate-outline'
+  },
+  {
+    type: 'asa',
+    label: 'ASPA',
+    icon: 'mdi-link-variant'
+  },
+  {
+    type: 'gbr',
+    label: 'Ghostbuster',
+    icon: 'mdi-ghost-outline'
+  },
+  {
+    type: 'tls',
+    label: 'TLS',
+    icon: 'mdi-lock-outline'
+  },
+  {
+    type: 'csr',
+    label: 'CSR',
+    icon: 'mdi-file-key-outline'
+  }
 ]
 
-// ─── Methods ──────────────────────────────────────────────────────────────────
-
 function loadExample(type: string): void {
-  store.addTab(type + '_example')
+  store.addTab(`${type}_example`)
+
   store.stateSet({
     tab: store.currentTab,
     type: 'example',
     data: type
   })
+
   emit('upload')
 }
 
 function open(newTab: boolean): void {
+  if (!data.value) {
+    dialog.value = false
+    return
+  }
+
   dialog.value = false
-  const type = file.value?.name.endsWith('.json') ? 'json' : 'hex'
 
   if (newTab) {
-    store.addTab(file.value?.name ?? 'Unnamed')
+    store.addTab(fileName.value || 'Unnamed')
   }
 
   store.stateSet({
     tab: store.currentTab,
     data: data.value,
-    type: type as any
+    type: dataType.value
   })
 
   clearFile()
   emit('upload')
 }
 
-function isReportFile(jsonData: string): boolean {
+function parseReport(text: string): ReportFileData | null {
   try {
-    const parsed = JSON.parse(jsonData)
-    return !!(parsed.version && parsed.state && parsed.report && Array.isArray(parsed.report))
+    const parsed: unknown = JSON.parse(text)
+
+    if (
+      !parsed ||
+      typeof parsed !== 'object'
+    ) {
+      return null
+    }
+
+    const report = parsed as Partial<ReportFileData>
+
+    if (
+      !report.version ||
+      !report.state ||
+      !Array.isArray(report.report)
+    ) {
+      return null
+    }
+
+    return {
+      version: report.version,
+      exportedAt: report.exportedAt,
+      name: report.name ?? 'Unknown',
+      state: report.state,
+      report: report.report
+    }
   } catch {
-    return false
+    return null
   }
 }
 
 function loadReportObject(newTab: boolean): void {
-  reportDialog.value = false
-  if (!reportData.value) return
+  const report = reportData.value
 
-  const tabName = reportData.value.name || 'Loaded from Report'
+  if (!report) {
+    reportDialog.value = false
+    return
+  }
+
+  reportDialog.value = false
 
   if (newTab) {
-    store.addTab(tabName)
+    store.addTab(
+      report.name || 'Loaded from Report'
+    )
   }
 
   store.stateSet({
     tab: store.currentTab,
-    data: reportData.value.state,
+    data: report.state,
     type: 'json'
   })
 
   emit('reportLoaded', {
-    name: reportData.value.name,
-    state: reportData.value.state,
-    report: reportData.value.report
+    name: report.name,
+    state: report.state,
+    report: report.report
   })
 
-  reportData.value = null
   clearFile()
   emit('upload')
 }
 
-async function processFile(f: File): Promise<void> {
-  file.value = f
+// -----------------------------------------------------------------------------
+// File processing
 
+async function processFile(
+  currentFile: File
+): Promise<FileResult> {
   try {
-    if (f.name.endsWith('.json')) {
-      const jsonText = await f.text()
+    const isJson = currentFile.name
+      .toLowerCase()
+      .endsWith('.json')
 
-      if (isReportFile(jsonText)) {
-        const parsed = JSON.parse(jsonText) as ReportFileData
-        reportData.value = parsed
+    if (isJson) {
+      const text = await currentFile.text()
+      const report = parseReport(text)
+
+      if (report) {
+        reportData.value = report
+
         reportInfo.value = {
-          name: parsed.name ?? 'Unknown',
-          exportedAt: parsed.exportedAt ? new Date(parsed.exportedAt).toLocaleString() : 'Unknown',
-          resultCount: parsed.report ? parsed.report.length : 0
+          name: report.name || 'Unknown',
+          exportedAt: report.exportedAt
+            ? new Date(report.exportedAt).toLocaleString()
+            : 'Unknown',
+          resultCount: report.report.length
         }
+
         reportDialog.value = true
-        return
+
+        return 'report'
       }
 
-      data.value = jsonText
+      data.value = text
     } else {
-      try {
-        const decoder = new TextDecoder('utf-8', { fatal: true })
-        const arrayBuffer = await f.arrayBuffer()
-        data.value = decoder.decode(arrayBuffer)
-      } catch {
-        const arrayBuffer = await f.arrayBuffer()
-        const uint8Array = new Uint8Array(arrayBuffer)
-        data.value = [...uint8Array].map(byte => byte.toString(16).padStart(2, '0').toUpperCase()).join('')
-      }
+      const buffer = await currentFile.arrayBuffer()
+      data.value = decodeBuffer(buffer)
     }
-  } catch (err) {
-    console.error('Error processing file:', err)
-    alert(`Error processing ${f.name}. Please ensure the file is valid.`)
-    file.value = null
+
+    file.value = currentFile
+
+    return 'ok'
+  } catch (error) {
+    console.error(
+      `Error processing file "${currentFile.name}":`,
+      error
+    )
+
+    showError(
+      `Error processing ${currentFile.name}`
+    )
+
+    return 'error'
   }
 }
+
+function decodeBuffer(buffer: ArrayBuffer): string {
+  try {
+    return new TextDecoder('utf-8', {
+      fatal: true
+    }).decode(buffer)
+  } catch {
+    return bytesToHex(new Uint8Array(buffer))
+  }
+}
+
+function bytesToHex(bytes: Uint8Array): string {
+  let result = ''
+
+  for (const byte of bytes) {
+    result += byte
+      .toString(16)
+      .padStart(2, '0')
+      .toUpperCase()
+  }
+
+  return result
+}
+
+// -----------------------------------------------------------------------------
+// File input
 
 function triggerFileInput(): void {
   fileInputRef.value?.click()
 }
 
-function clearFile(): void {
-  file.value = null
-  data.value = null
-  reportData.value = null
-  if (fileInputRef.value) {
-    fileInputRef.value.value = ''
-  }
+function handleFileSelect(event: Event): void {
+  const input = event.target as HTMLInputElement
+
+  void handleFiles(input.files)
+
+  // Allow selecting the same file again.
+  input.value = ''
 }
 
-async function handleFileSelect(event: Event): Promise<void> {
-  const target = event.target as HTMLInputElement
-  const files = target.files
-  if (!files) return
-  const multiple = files.length > 1
-
-  for (const f of files) {
-    await processFile(f)
-    if (reportDialog.value) continue
-    if (multiple || store.tabs.length === 0) {
-      open(true)
-    } else {
-      dialog.value = true
-    }
-  }
-}
-
-async function handleDrop(event: DragEvent): Promise<void> {
+function handleDrop(event: DragEvent): void {
   dragOver.value = false
-  const files = event.dataTransfer?.files
-  if (!files) return
+
+  void handleFiles(
+    event.dataTransfer?.files
+  )
+}
+
+async function handleFiles(
+  list: FileList | null | undefined
+): Promise<void> {
+  if (!list?.length) {
+    return
+  }
+
+  const files = Array.from(list)
   const multiple = files.length > 1
 
-  for (const f of files) {
-    await processFile(f)
-    if (reportDialog.value) continue
-    if (multiple || store.tabs.length === 0) {
+  for (const currentFile of files) {
+    const result = await processFile(currentFile)
+
+    if (result === 'error') {
+      continue
+    }
+
+    // Report files require user interaction.
+    if (result === 'report') {
+      break
+    }
+
+    if (
+      multiple ||
+      store.tabs.length === 0
+    ) {
       open(true)
     } else {
       dialog.value = true
+      break
     }
   }
 }
 
 function handlePastedContent(): void {
-  if (!pastedContent.value) return
-  let content = pastedContent.value.trim()
+  const content = normalizePastedContent(
+    pastedContent.value
+  )
 
-  if (/^[0-9A-Fa-f\s]+$/.test(content)) { //if hex with space
-  content = content.replace(/\s+/g, '')   //remove space/ newline
+  if (!content) {
+    return
   }
 
   data.value = content
-  file.value = { name: 'Pasted Content' } as File
+
+  file.value = null
 
   if (store.tabs.length === 0) {
     open(true)
@@ -375,6 +614,38 @@ function handlePastedContent(): void {
   }
 
   pastedContent.value = ''
+}
+
+function normalizePastedContent(
+  content: string
+): string {
+  const trimmed = content.trim()
+
+  // Remove whitespace from hexadecimal content.
+  if (/^[0-9a-f\s]+$/i.test(trimmed)) {
+    return trimmed.replace(/\s+/g, '')
+  }
+
+  return trimmed
+}
+
+function clearFile(): void {
+  file.value = null
+  data.value = null
+  reportData.value = null
+  reportDialog.value = false
+
+  if (fileInputRef.value) {
+    fileInputRef.value.value = ''
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Error handling
+
+function showError(message: string): void {
+  errorMessage.value = message
+  errorSnackbar.value = true
 }
 </script>
 
@@ -418,7 +689,11 @@ function handlePastedContent(): void {
   border-radius: 12px;
   background: rgba(var(--v-theme-primary), 0.02);
   cursor: pointer;
-  transition: all 0.2s ease;
+
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease;
 }
 
 .drop-zone:hover {
@@ -489,7 +764,7 @@ function handlePastedContent(): void {
 }
 
 .paste-zone :deep(.v-textarea) {
-  overflow: scroll;
+  overflow: auto;
   max-height: 80dvh;
 }
 
