@@ -33,7 +33,7 @@ services:
       - DATABASE_PATH=/app/data/db.sqlite3
       - DATA_FOLDER=/app/data/reports
       - WATCH_POLL_INTERVAL=${WATCH_POLL_INTERVAL:-5}
-      - DJANGO_ALLOWED_HOSTS=*
+      - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS:?}
       - DJANGO_DEBUG=0
     expose:
       - "8000"
