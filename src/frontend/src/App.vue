@@ -6,7 +6,7 @@
             <v-app-bar-title>
                 <div class="d-flex align-center" style="gap: 12px;">
                     <img :src="logo" alt="Logo" height="32"/>
-                    <span class="logo-text">{{ logoText }}</span>
+                    <span class="logo-text">DERP</span>
                 </div>
             </v-app-bar-title>
 
@@ -16,12 +16,6 @@
                     :variant="$route.path === '/' ? 'outlined' : 'text'"
                 >
                     EDITOR
-                </v-btn>
-                <v-btn 
-                    to="/notify"
-                    :variant="$route.path === '/notify' ? 'outlined' : 'text'"
-                >
-                    NOTIFY
                 </v-btn>
                 <v-btn 
                     to="/about"
@@ -45,11 +39,6 @@
                 <v-list-item
                     to="/"
                     title="EDITOR"
-                    @click="drawer = false"
-                ></v-list-item>
-                <v-list-item
-                    to="/notify"
-                    title="NOTIFY"
                     @click="drawer = false"
                 ></v-list-item>
                 <v-list-item
@@ -91,11 +80,6 @@ export default {
     computed: {
         logo() {
             return this.mode === 'dark' ? this.logoDark : this.logoLight
-        },
-        logoText() {
-            if (this.$route.path === '/about') return 'DERP'
-            if (this.$route.path === '/notify') return 'RPKI Notify'
-            return 'CURE'
         }
     }
 };

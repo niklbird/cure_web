@@ -9,4 +9,3 @@ COPY nginx.conf.template /etc/nginx/templates/nginx.conf.template
 
 # Directories for the volumes will be mounted at runtime:
 #   /usr/share/nginx/html/app     ← frontend dist
-#   /usr/share/nginx/html/static  ← Django collected static
