@@ -18,8 +18,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'qv!%=+xdm3qdu0xfh--ej#n8!koq)1_6z1v9!r_2g+0o9x%8@k'
+SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
 
 STATIC_URL = "/static/"
 # Application definition
