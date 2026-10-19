@@ -45,6 +45,6 @@ This tool is in its alpha version and contributions are very welcome! Please ope
 
 ## 📄 License
 
-MIT License
+This project is licensed under the **GPL3 License**. See [LICENSE](LICENSE) for details.
 
 
