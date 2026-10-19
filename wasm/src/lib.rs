@@ -4,7 +4,7 @@ use regex::Regex;
 use tar::Builder;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
-use cure_asn1::{labeling::Label, labels::LabelName, rpki::rpki::ObjectType, tree_parser::{self, Tree, TypeTag}};
+use cure_asn1::{labeling::Label, labels::LabelName, rpki::rpki::ObjectType, tree_parser::{self, Asn1ObjType, Tree, TypeTag}};
 use std::{fs, io::Cursor};
 
 use flate2::write::GzEncoder;
@@ -251,7 +251,7 @@ impl State{
         // let rpki_object = RpkiObject::new(self.tree.clone(), self.tree.obj_type.clone());
         let parent_key;
         let mut repo;
-        if &self.infer_object_type() == "cer"{
+        if &self.infer_object_type() == &Asn1ObjType::Cert{
             repo = cure_repo::new_parent_child();
             parent_key = repo.child_repos[0].certificate.parent_key.clone();
         }
@@ -264,10 +264,10 @@ impl State{
         }
 
         let child_key = load_random_key(&repo.conf).1;
-        let name = format!("{}.{}", random_fname(), &self.infer_object_type());
+        let name = format!("{}.{:?}", random_fname(), &self.infer_object_type());
 
         let cure_obj = CureObject::new(
-            ObjectType::from_string(&self.infer_object_type()),
+            ObjectType::from_asn1_type(&self.infer_object_type()),
             parent_key,
             child_key,
             self.tree.clone(),
@@ -323,8 +323,10 @@ impl State{
         if ob_typ == ObjectType::UNKNOWN{
             return Err("Invalid object type".to_string());
         }
+        
         let mut obj = cure_pp::cure_object::new_object(&conf, &ob_typ);
         obj.fix_fields(&cure_repo::FixingLevel::Full, &conf, None);
+
         let state = State{tree: obj.tree};
         Ok(state)
     }
@@ -446,10 +448,10 @@ impl State{
         Ok(state)
     }
 
-    #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
-    pub fn infer_object_type(&self) -> String{
+    //#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
+    fn infer_object_type(&self) -> Asn1ObjType{
         let val = self.tree.infer_own_type();
-        val.unwrap().to_string()
+        val.unwrap()
     }
 
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
@@ -661,7 +663,8 @@ fn in_to_byt(inp: i64) -> Vec<u8> {
 
 pub fn test(){
     // let content = fs::read_to_string("/home/niklas/Downloads/asn1-app.pem").unwrap();
-    let mut state = State::load_example("tls").unwrap();
+    let mut state = State::load_example("roa").unwrap();
+
     state.get_nodes();
     println!("{}", state.tree.encode_b64());
 }
