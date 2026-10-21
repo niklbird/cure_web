@@ -4,7 +4,7 @@ use regex::Regex;
 use tar::Builder;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
-use cure_asn1::{labeling::Label, labels::LabelName, rpki::rpki::ObjectType, tree_parser::{self, Tree, TypeTag}};
+use cure_asn1::{labeling::Label, labels::LabelName, rpki::rpki::ObjectType, tree_parser::{self, Asn1ObjType, Tree, TypeTag}};
 use std::{fs, io::Cursor};
 
 use flate2::write::GzEncoder;
@@ -245,9 +245,6 @@ impl State{
         Ok(())
     }
 
-
-
-    
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
     pub fn repositorify(&self) -> Vec<u8>{
         let (repo_files, tal, ca_cert) = self.into_rpki_repo();
@@ -262,7 +259,7 @@ impl State{
         // let rpki_object = RpkiObject::new(self.tree.clone(), self.tree.obj_type.clone());
         let parent_key;
         let mut repo;
-        if &self.infer_object_type() == "cer"{
+        if &self.infer_object_type() == &Asn1ObjType::Cert{
             repo = cure_repo::new_parent_child();
             parent_key = repo.child_repos[0].certificate.parent_key.clone();
         }
@@ -275,10 +272,10 @@ impl State{
         }
 
         let child_key = load_random_key(&repo.conf).1;
-        let name = format!("{}.{}", random_fname(), &self.infer_object_type());
+        let name = format!("{}.{}", random_fname(), self.infer_object_type().filename_extension());
 
         let cure_obj = CureObject::new(
-            ObjectType::from_string(&self.infer_object_type()),
+            object_type_from_asn1(&self.infer_object_type()),
             parent_key,
             child_key,
             self.tree.clone(),
@@ -317,7 +314,6 @@ impl State{
         // }
         (ret, repo.get_tal().as_bytes().to_vec(), repo.certificate.tree.encode())
     }
-
 
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
     pub fn load_example(typ: &str) -> Result<State, String>{
@@ -456,8 +452,14 @@ impl State{
         Ok(state)
     }
 
-    #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
-    pub fn infer_object_type(&self) -> String{
+    //#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
+    fn infer_object_type(&self) -> Asn1ObjType{
+        let val = self.tree.infer_own_type();
+        val.unwrap()
+    }
+
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen(js_name = infer_object_type))]
+    pub fn infer_object_type_str(&self) -> String {
         self.tree
             .infer_own_type()
             .map(|t| t.filename_extension().to_string())
@@ -710,7 +712,7 @@ fn in_to_byt(inp: i64) -> Vec<u8> {
 
 pub fn test(){
     // let content = fs::read_to_string("/home/niklas/Downloads/asn1-app.pem").unwrap();
-    let mut state = State::load_example("tls").unwrap();
+    let mut state = State::load_example("roa").unwrap();
     state.get_nodes();
     println!("{}", state.tree.encode_b64());
 }
@@ -843,3 +845,20 @@ emyPxgcYxn/eR44/KJ4EBs+lVDR3veyJm+kXQ99b21/+jh5Xos1AnX5iItreGCc=";
 
 /// aditional CSR example template (maybe move later)
 pub const EXAMPLE_CSR: &str = "MIHQMHgCAQAwFjEUMBIGA1UEAwwLZXhhbXBsZS5jb20wWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARHXcIQUqtRO+lxrk8sCu6+tB0p23Ayz1z8/PivWiorAZhP3kvdnIKCJ0XvTsxF1V4fASDKehReY8XHxZr6PcXkoAAwCgYIKoZIzj0EAwIDSAAwRQIgRXa011O7BZWvG15AzhQF0ltRw6UQ7IpzqN9YoXo2dToCIQCd2q+39RqDF2RE884IHWcXvRSeWeEhoIIFrCHnQI4Xvg==";
+
+//from_asn1_typ hotfix (nur temporär):
+use cure_asn1::tree_parser::SObjType;
+
+fn object_type_from_asn1(t: &Asn1ObjType) -> ObjectType {
+    match t {
+        Asn1ObjType::SignedObj(SObjType::Roa)  => ObjectType::ROA,
+        Asn1ObjType::SignedObj(SObjType::Mft)  => ObjectType::MFT,
+        Asn1ObjType::SignedObj(SObjType::Gbr)  => ObjectType::GBR,
+        Asn1ObjType::SignedObj(SObjType::Aspa) => ObjectType::ASA,
+        Asn1ObjType::Cert => ObjectType::CERTCA,
+        Asn1ObjType::Crl  => ObjectType::CRL,
+        Asn1ObjType::IRoa => ObjectType::IROA,
+        Asn1ObjType::IMft => ObjectType::IMFT,
+        Asn1ObjType::Tls  => ObjectType::UNKNOWN,
+    }
+}
