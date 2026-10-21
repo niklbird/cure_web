@@ -95,6 +95,18 @@ fn create_tar_gz_in_memory(files: Vec<(String, Vec<u8>)>) -> std::io::Result<Vec
     Ok(cursor.into_inner())              // Return the buffer
 }
 
+fn clean_input(data: &str) -> Result<String, String> {
+    let mut data = data.trim().to_string();
+    if data.starts_with("0x") { data = data[2..].to_string(); }
+    data = data.replace('\r', "");
+    if is_pem(&data) {
+        let s: Vec<&str> = data.split('\n').collect();
+        if s.len() < 3 { return Err("Invalid data, looked like PEM but isnt".into()); }
+        data = s[1..s.len() - 1].join("");
+    }
+    Ok(data.replace('\n', ""))
+}
+
 // fn create_zip_in_memory(files: Vec<(String, Vec<u8>)>) -> zip::result::ZipResult<Vec<u8>> {
 //     let buffer = Vec::new();
 //     let cursor = Cursor::new(buffer);
@@ -201,8 +213,7 @@ impl State{
     }
 
     pub fn export_human_readable(&self) -> String{
-        let root = self.tree.get_root();
-        self.tree.to_json(root.id).to_string()
+        serde_json::to_string_pretty(&encode_tree(&self.tree)).unwrap_or_default()
     }
 
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
@@ -234,9 +245,6 @@ impl State{
         Ok(())
     }
 
-
-
-    
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
     pub fn repositorify(&self) -> Vec<u8>{
         let (repo_files, tal, ca_cert) = self.into_rpki_repo();
@@ -264,10 +272,10 @@ impl State{
         }
 
         let child_key = load_random_key(&repo.conf).1;
-        let name = format!("{}.{:?}", random_fname(), &self.infer_object_type());
+        let name = format!("{}.{}", random_fname(), self.infer_object_type().filename_extension());
 
         let cure_obj = CureObject::new(
-            ObjectType::from_asn1_type(&self.infer_object_type()),
+            object_type_from_asn1(&self.infer_object_type()),
             parent_key,
             child_key,
             self.tree.clone(),
@@ -306,7 +314,6 @@ impl State{
         // }
         (ret, repo.get_tal().as_bytes().to_vec(), repo.certificate.tree.encode())
     }
-
 
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
     pub fn load_example(typ: &str) -> Result<State, String>{
@@ -418,7 +425,6 @@ impl State{
         Ok(())
     }
 
-
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
     pub fn remove_node(&mut self, id: usize) -> Result<(), String>{
         self.tree.taint_parents(id);
@@ -454,10 +460,55 @@ impl State{
         val.unwrap()
     }
 
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen(js_name = infer_object_type))]
+    pub fn infer_object_type_str(&self) -> String {
+        self.tree
+            .infer_own_type()
+            .map(|t| t.filename_extension().to_string())
+            .unwrap_or_default()
+    }
+
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
     pub fn get_all_oids(&self) -> String{
         let oids = tree_parser::rpki_oid_map().keys().cloned().collect::<Vec<&str>>();
         serde_json::to_string(&oids).unwrap()
+    }
+
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
+    pub fn analyze_input(data: String) -> String {
+        let cleaned = match clean_input(&data) {
+            Ok(c) => c,
+            Err(m) => return serde_json::json!({
+                "kind": "decode", "message": m, "offset": 0, "text": data.trim()
+            }).to_string(),
+        };
+
+        let bytes = if is_hex(&cleaned) { hex::decode(&cleaned).ok() }
+            else if is_base64(&cleaned) { base64::decode(&cleaned).ok() }
+            else { None };
+
+        match bytes {
+            None => {
+                let off = cleaned.char_indices()
+                    .find(|(_, c)| !(c.is_ascii_alphanumeric() || "+/=".contains(*c)))
+                    .map(|(i, _)| i)
+                    .unwrap_or(cleaned.len().saturating_sub(1));
+                serde_json::json!({
+                    "kind": "decode",
+                    "message": "Invalid data, neither hex nor base64",
+                    "offset": off, "text": cleaned
+                }).to_string()
+            }
+            Some(b) => {
+                let (msg, off) = match cure_asn1::asn1_parser::parse_asn1_object_slim(&b) {
+                    Err(e) => (e.message, e.offset.unwrap_or(0)),
+                    Ok(_) => ("ASN.1 structure not accepted".to_string(), 0),
+                };
+                serde_json::json!({
+                    "kind": "parse", "message": msg, "offset": off, "bytes": b
+                }).to_string()
+            }
+        }
     }
 }
 
@@ -664,7 +715,6 @@ fn in_to_byt(inp: i64) -> Vec<u8> {
 pub fn test(){
     // let content = fs::read_to_string("/home/niklas/Downloads/asn1-app.pem").unwrap();
     let mut state = State::load_example("roa").unwrap();
-
     state.get_nodes();
     println!("{}", state.tree.encode_b64());
 }
@@ -797,3 +847,20 @@ emyPxgcYxn/eR44/KJ4EBs+lVDR3veyJm+kXQ99b21/+jh5Xos1AnX5iItreGCc=";
 
 /// aditional CSR example template (maybe move later)
 pub const EXAMPLE_CSR: &str = "MIHQMHgCAQAwFjEUMBIGA1UEAwwLZXhhbXBsZS5jb20wWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARHXcIQUqtRO+lxrk8sCu6+tB0p23Ayz1z8/PivWiorAZhP3kvdnIKCJ0XvTsxF1V4fASDKehReY8XHxZr6PcXkoAAwCgYIKoZIzj0EAwIDSAAwRQIgRXa011O7BZWvG15AzhQF0ltRw6UQ7IpzqN9YoXo2dToCIQCd2q+39RqDF2RE884IHWcXvRSeWeEhoIIFrCHnQI4Xvg==";
+
+//from_asn1_typ hotfix (nur temporär):
+use cure_asn1::tree_parser::SObjType;
+
+fn object_type_from_asn1(t: &Asn1ObjType) -> ObjectType {
+    match t {
+        Asn1ObjType::SignedObj(SObjType::Roa)  => ObjectType::ROA,
+        Asn1ObjType::SignedObj(SObjType::Mft)  => ObjectType::MFT,
+        Asn1ObjType::SignedObj(SObjType::Gbr)  => ObjectType::GBR,
+        Asn1ObjType::SignedObj(SObjType::Aspa) => ObjectType::ASA,
+        Asn1ObjType::Cert => ObjectType::CERTCA,
+        Asn1ObjType::Crl  => ObjectType::CRL,
+        Asn1ObjType::IRoa => ObjectType::IROA,
+        Asn1ObjType::IMft => ObjectType::IMFT,
+        Asn1ObjType::Tls  => ObjectType::UNKNOWN,
+    }
+}

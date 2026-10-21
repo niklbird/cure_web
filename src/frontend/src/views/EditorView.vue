@@ -11,6 +11,11 @@
     <ElementMenu :parent="parent" :node="activeNode" @close="showElementMenu = false" />
   </v-overlay>
 
+  <v-snackbar v-model="errorSnackbar" color="error" location="bottom" :timeout="6000">
+    {{ store.errorToast }}
+    <template #actions><v-btn variant="text" @click="errorSnackbar = false">Close</v-btn></template>
+  </v-snackbar>
+
   <v-overlay v-model="showKeyLoader">
     <KeyLoader :activeNode="activeNode" @close="showKeyLoader = false" />
   </v-overlay>
@@ -316,6 +321,9 @@
               @rightclick="(x: number, y: number, id: number) => openMenu(x, y, id)"
               :simplify="simplify || isMobile"
             />
+            <v-alert v-else-if="store.parseError" type="error" variant="tonal" class="ma-4">
+              {{ store.parseError.message }}
+            </v-alert>
             <p v-else class="text-h6 text-center pa-5">
               No ASN.1 data loaded. Please upload a file or select an example.
             </p>
@@ -378,6 +386,9 @@
             >
               {{ dec2hex(byte.value) }}
             </span>
+          </div>
+          <div class="byte-grid" v-else-if="store.parseError">
+            <span v-for="(cell, i) in errorCells" :key="i" :class="{ 'error-byte': cell.bad }">{{ cell.c }}</span>
           </div>
         </div>
       </v-col>
@@ -469,6 +480,30 @@ const contextItems = computed<ContextMenuItem[]>(() => [
     }
   }
 ])
+
+const errorSnackbar = computed({
+  get: () => !!store.errorToast,
+  set: (v: boolean) => { if (!v) store.errorToast = null }
+})
+
+const errorCells = computed(() => {
+  const e = store.parseError
+  if (!e) return []
+  const cells = e.kind === 'parse'
+    ? e.bytes!.map(dec2hex)
+    : (e.text ?? '').match(/.{1,2}/gs) ?? []
+  const start = Math.min(
+    e.kind === 'parse' ? e.offset : Math.floor(e.offset / 2),
+    Math.max(cells.length - 1, 0)
+  )
+  return cells.map((c, i) => ({ c, bad: i >= start }))
+})
+
+watch(() => store.parseError, async (e) => {
+  if (!e) return
+  await nextTick()
+  bytesRef.value?.querySelector('.error-byte')?.scrollIntoView({ block: 'center' })
+})
 
 // ─── Computed ─────────────────────────────────────────────────────────────────
 
@@ -952,6 +987,12 @@ onUpdated(() => {
 
 .crashed-thin {
   color: red;
+}
+
+.error-byte {
+  color: #e63946;
+  font-weight: bold;
+  background: rgba(230, 57, 70, .15);
 }
 
 /* column spacing */
