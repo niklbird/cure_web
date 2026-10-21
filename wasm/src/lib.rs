@@ -95,6 +95,18 @@ fn create_tar_gz_in_memory(files: Vec<(String, Vec<u8>)>) -> std::io::Result<Vec
     Ok(cursor.into_inner())              // Return the buffer
 }
 
+fn clean_input(data: &str) -> Result<String, String> {
+    let mut data = data.trim().to_string();
+    if data.starts_with("0x") { data = data[2..].to_string(); }
+    data = data.replace('\r', "");
+    if is_pem(&data) {
+        let s: Vec<&str> = data.split('\n').collect();
+        if s.len() < 3 { return Err("Invalid data, looked like PEM but isnt".into()); }
+        data = s[1..s.len() - 1].join("");
+    }
+    Ok(data.replace('\n', ""))
+}
+
 // fn create_zip_in_memory(files: Vec<(String, Vec<u8>)>) -> zip::result::ZipResult<Vec<u8>> {
 //     let buffer = Vec::new();
 //     let cursor = Cursor::new(buffer);
@@ -201,8 +213,7 @@ impl State{
     }
 
     pub fn export_human_readable(&self) -> String{
-        let root = self.tree.get_root();
-        self.tree.to_json(root.id).to_string()
+        serde_json::to_string_pretty(&encode_tree(&self.tree)).unwrap_or_default()
     }
 
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
@@ -416,7 +427,6 @@ impl State{
         Ok(())
     }
 
-
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
     pub fn remove_node(&mut self, id: usize) -> Result<(), String>{
         self.tree.taint_parents(id);
@@ -448,14 +458,53 @@ impl State{
 
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
     pub fn infer_object_type(&self) -> String{
-        let val = self.tree.infer_own_type();
-        val.unwrap().to_string()
+        self.tree
+            .infer_own_type()
+            .map(|t| t.filename_extension().to_string())
+            .unwrap_or_default()
     }
 
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
     pub fn get_all_oids(&self) -> String{
         let oids = tree_parser::rpki_oid_map().keys().cloned().collect::<Vec<&str>>();
         serde_json::to_string(&oids).unwrap()
+    }
+
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
+    pub fn analyze_input(data: String) -> String {
+        let cleaned = match clean_input(&data) {
+            Ok(c) => c,
+            Err(m) => return serde_json::json!({
+                "kind": "decode", "message": m, "offset": 0, "text": data.trim()
+            }).to_string(),
+        };
+
+        let bytes = if is_hex(&cleaned) { hex::decode(&cleaned).ok() }
+            else if is_base64(&cleaned) { base64::decode(&cleaned).ok() }
+            else { None };
+
+        match bytes {
+            None => {
+                let off = cleaned.char_indices()
+                    .find(|(_, c)| !(c.is_ascii_alphanumeric() || "+/=".contains(*c)))
+                    .map(|(i, _)| i)
+                    .unwrap_or(cleaned.len().saturating_sub(1));
+                serde_json::json!({
+                    "kind": "decode",
+                    "message": "Invalid data, neither hex nor base64",
+                    "offset": off, "text": cleaned
+                }).to_string()
+            }
+            Some(b) => {
+                let (msg, off) = match cure_asn1::asn1_parser::parse_asn1_object_slim(&b) {
+                    Err(e) => (e.message, e.offset.unwrap_or(0)),
+                    Ok(_) => ("ASN.1 structure not accepted".to_string(), 0),
+                };
+                serde_json::json!({
+                    "kind": "parse", "message": msg, "offset": off, "bytes": b
+                }).to_string()
+            }
+        }
     }
 }
 

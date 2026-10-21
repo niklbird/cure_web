@@ -32,6 +32,15 @@ export interface Tab {
     copiedNode: TreeNode | null
     mutations: [string, any][]
     count: number
+    parseError: ParseError | null
+}
+
+export interface ParseError {
+    kind: 'decode' | 'parse'
+    message: string
+    offset: number
+    bytes?: number[]
+    text?: string
 }
 
 type MutationName =
@@ -100,7 +109,8 @@ function createDefaultTab(id = '', name = ''): Tab {
         draggedNodeId: null,
         copiedNode: null,
         mutations: [],
-        count: 0
+        count: 0,
+        parseError: null
     }
 }
 
@@ -130,6 +140,7 @@ export const useTabsStore = defineStore('tabs', () => {
     const tabs = ref<Tab[]>([])
     const currentTab = ref<string | null>(null)
     const copiedNode = ref<TreeNode | null>(null)
+    const errorToast = ref<string | null>(null)
 
     // ─── Internal tab helpers ─────────────────────────────────────────────────
 
@@ -216,6 +227,7 @@ export const useTabsStore = defineStore('tabs', () => {
     const activeDropContextId = computed(
         () => currentTabObj.value.activeDropContextId
     )
+    const parseError = computed(() => currentTabObj.value.parseError)
 
     const canUndo = computed(() => currentTabObj.value.count >= 2)
 
@@ -431,16 +443,31 @@ export const useTabsStore = defineStore('tabs', () => {
 
         if (!tab) return
 
-        commitMutation(tab, 'stateSet', context, options)
-
         if (context.type === 'json') {
             tab.state = State.from_stored(context.data)
+            tab.parseError = null
         } else if (context.type === 'example') {
             tab.state = State.load_example(context.data)
+            tab.parseError = null
         } else {
-            tab.state = new State(context.data)
+            try {
+                tab.state = new State(context.data)
+            } catch {
+                resetDocumentState(tab)
+                tab.mutations = []
+                tab.count = 0
+                const err: ParseError = JSON.parse(State.analyze_input(context.data))
+                tab.parseError = err
+                errorToast.value = err.kind === 'parse'
+                ? `Invalid ASN.1 data at byte ${err.offset}: ${err.message}`
+                : err.message.includes('PEM')
+                    ? 'The PEM data is incomplete or invalid.'
+                    : 'Invalid content. Please paste a valid hexadecimal or Base64 value.'
+                return
+            }
         }
-
+        tab.parseError = null
+        commitMutation(tab, 'stateSet', context, options)   // erst nach erfolgreichem Parse
         finishMutation(tab, options)
     }
 
@@ -762,6 +789,8 @@ export const useTabsStore = defineStore('tabs', () => {
         anyExpanded,
         canUndo,
         canRedo,
+        errorToast,
+        parseError,
 
         // Getter functions
         getNodeFromId,
