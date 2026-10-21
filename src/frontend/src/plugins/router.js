@@ -1,7 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import EditorView from '../views/EditorView.vue';
 import AboutView from '../views/AboutView.vue';
-import NotifyView from '../views/NotifyView.vue';
 
 // Detects directory with actual source of the app to fix web reload issue etc
 function detectBase() {
@@ -32,11 +31,6 @@ const routes = [
     path: '/about',
     name: 'About',
     component: AboutView
-  },
-  {
-    path: '/notify',
-    name: 'Notify',
-    component: NotifyView
   }
 ];
 
