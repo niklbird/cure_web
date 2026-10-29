@@ -798,6 +798,7 @@ function getUserFriendlyError(error: unknown): string {
 .paste-zone :deep(.v-textarea) {
   overflow: auto;
   max-height: 80dvh;
+  padding-top: 8px;
 }
 
 .paste-textarea :deep(.v-field) {
