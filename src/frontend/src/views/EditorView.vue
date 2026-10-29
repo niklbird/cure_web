@@ -20,6 +20,10 @@
     <KeyLoader :activeNode="activeNode" @close="showKeyLoader = false" />
   </v-overlay>
 
+  <v-overlay v-model="showExtensionDialog">
+    <ExtensionDialog @close="showExtensionDialog = false" />
+  </v-overlay>
+
   <v-overlay v-model="showReports">
     <v-card
       :width="isMobile ? '95vw' : '70vw'"
@@ -289,6 +293,16 @@
             variant="text"
             size="small"
             :disabled="store.tree.length === 0"
+            @click="showExtensionDialog = true"
+          >
+            <v-icon color="primary" start size="18">mdi-puzzle-plus-outline</v-icon>
+            Add Extension
+          </v-btn>
+
+          <v-btn
+            variant="text"
+            size="small"
+            :disabled="store.tree.length === 0"
             @click="store.setAll(!store.anyExpanded)"
           >
             <v-icon
@@ -411,6 +425,7 @@ import UploadCard from '@/components/UploadCard.vue'
 import ElementMenu from '@/components/ElementMenu.vue'
 import MenuComponent from '@/components/MenuComponent.vue'
 import KeyLoader from '@/components/KeyLoader.vue'
+import ExtensionDialog from '@/components/ExtensionDialog.vue'
 
 import type { Tab } from '@/stores/tabs'
 import type { TreeNode, CureReport, ContextMenuItem } from '@/types/editor'
@@ -445,6 +460,7 @@ const shareUrl = ref('')
 const shareUrlTooLong = ref(false)
 const copied = ref(false)
 const showKeyLoader = ref(false)
+const showExtensionDialog = ref(false)
 const menuOpen = ref(false)
 
 const activatorRef = ref<HTMLDivElement | null>(null)

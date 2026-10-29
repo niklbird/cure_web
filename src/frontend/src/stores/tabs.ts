@@ -7,6 +7,7 @@ import { State } from '@/rust/cure_web'
 import type {
     TreeNode,
     NodeAddPayload,
+    NodeAddDerPayload,
     NodeChangePayload,
     NodeUpdatePayload,
     NodeRemovePayload,
@@ -46,6 +47,7 @@ export interface ParseError {
 type MutationName =
     | 'stateSet'
     | 'nodeAdded'
+    | 'nodeAddedDer'
     | 'nodeMoved'
     | 'nodeChanged'
     | 'nodeUpdated'
@@ -54,6 +56,7 @@ type MutationName =
 type MutationContext =
     | StateSetPayload
     | NodeAddPayload
+    | NodeAddDerPayload
     | NodeChangePayload
     | NodeUpdatePayload
     | NodeRemovePayload
@@ -496,6 +499,19 @@ export const useTabsStore = defineStore('tabs', () => {
         finishMutation(tab, options)
     }
 
+    function nodeAddedDer(
+        context: NodeAddDerPayload,
+        options: MutationOptions = { recordHistory: true, advanceHistory: true, refreshTree: true }
+    ): void {
+        const tab = findTab(context.tab)
+        if (!tab?.state) return
+
+        // Call first, so a failed insert doesn't leave a bogus history entry
+        tab.state.add_der(context.parent, new Uint8Array(context.der), context.index ?? undefined)
+        commitMutation(tab, 'nodeAddedDer', context, options)
+        finishMutation(tab, options)
+    }
+
     function positionAdded(context: {
         id: number
         top: number
@@ -681,6 +697,10 @@ export const useTabsStore = defineStore('tabs', () => {
             case 'nodeAdded':
                 nodeAdded(context as NodeAddPayload, options)
                 break
+            
+            case 'nodeAddedDer':
+                nodeAddedDer(context as NodeAddDerPayload, options)
+                break
 
             case 'nodeMoved':
                 nodeMoved(context as NodeMovePayload, options)
@@ -816,6 +836,7 @@ export const useTabsStore = defineStore('tabs', () => {
         mutationHistoryCounterSet,
         stateSet,
         nodeAdded,
+        nodeAddedDer,
         positionAdded,
         expandedSet,
         nodeMoved,

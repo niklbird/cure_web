@@ -157,6 +157,24 @@ pub struct State{
     tree: Tree, 
 }
 
+/// Returns (tag, content, total bytes consumed). Single-byte tags only.
+fn parse_tlv(buf: &[u8]) -> Result<(u8, &[u8], usize), String> {
+    if buf.len() < 2 { return Err("Truncated DER".into()); }
+    let tag = buf[0];
+    if tag & 0x1f == 0x1f { return Err("Multi-byte tags not supported".into()); }
+    let (len, hdr) = if buf[1] < 0x80 {
+        (buf[1] as usize, 2)
+    } else {
+        let n = (buf[1] & 0x7f) as usize;
+        if n == 0 || n > 4 || buf.len() < 2 + n { return Err("Invalid DER length".into()); }
+        let mut l = 0usize;
+        for b in &buf[2..2 + n] { l = (l << 8) | *b as usize; }
+        (l, 2 + n)
+    };
+    if buf.len() < hdr + len { return Err("Truncated DER".into()); }
+    Ok((tag, &buf[hdr..hdr + len], hdr + len))
+}
+
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 impl State{
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen(constructor))]
@@ -365,6 +383,21 @@ impl State{
     }
 
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
+    pub fn add_der(&mut self, parent: usize, der: Vec<u8>, index: Option<usize>) -> Result<(), String> {
+        if self.tree.tokens.get(&parent).is_none() {
+            return Err("Invalid parent".to_string());
+        }
+        let (tag, content, used) = parse_tlv(&der)?;
+        if used != der.len() {
+            return Err("Trailing bytes after DER element".to_string());
+        }
+        let id = self.insert_element(tag, content, parent, index)?;
+        self.tree.taint_parents(id);
+        self.tree.fix_sizes(true);
+        Ok(())
+    }
+
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
     pub fn adapt_node_content(&mut self, id: usize, new_content: String) -> Result<(), String>{
         let val = val_to_bytes(self.tree.tokens[&id].tag_u, new_content.clone())?;
         self.tree.tokens.get_mut(&id).unwrap().data = val;
@@ -509,6 +542,31 @@ impl State{
                 }).to_string()
             }
         }
+    }
+}
+
+impl State {
+    fn insert_element(&mut self, tag: u8, content: &[u8], parent: usize, position: Option<usize>) -> Result<usize, String> {
+        let before = self.tree.tokens[&parent].children.clone();
+        let constructed = tag & 0x20 != 0;
+        let data = if constructed { vec![] } else { content.to_vec() };
+
+        self.tree.add_node(tag, data, parent, None, position);
+
+        // Find the id of the node we just added (don't rely on add_node's return type)
+        let id = self.tree.tokens[&parent].children.iter().copied()
+            .find(|c| !before.contains(c))
+            .ok_or("Node was not added".to_string())?;
+
+        if constructed {
+            let mut rest = content;
+            while !rest.is_empty() {
+                let (t, c, used) = parse_tlv(rest)?;
+                self.insert_element(t, c, id, None)?;
+                rest = &rest[used..];
+            }
+        }
+        Ok(id)
     }
 }
 

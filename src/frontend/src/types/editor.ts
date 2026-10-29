@@ -95,3 +95,11 @@ export interface CureReport {
     state: string
     report: CureRpResult[]
 }
+
+export interface NodeAddDerPayload {
+    tab: string | null
+    parent: number
+    der: number[]
+    index?: number | null
+    push?: boolean
+}
