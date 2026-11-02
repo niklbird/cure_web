@@ -12,6 +12,7 @@
   >
     <div
       class="node-header"
+      :data-tree-node-id="node.id"
       :class="{ 
         dragover: isDragOverSelf(node.children.length), 
         modified: node.edited, 

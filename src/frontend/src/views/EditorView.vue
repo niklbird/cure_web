@@ -328,7 +328,7 @@
         </div>
 
         <div class="asn-tree-wrapper">
-          <div class="asn-tree">
+          <div class="asn-tree" ref="treeRef">
             <TreeNodeComponent
               v-if="store.tree.length > 0"
               :node="findRoot()"
@@ -394,7 +394,7 @@
                 subHighlightedNodeAndDescendants.has(byte.nodeId) ? 'sub-highlighted' : ''
               ]"
               :data-node-id="byte.nodeId"
-              @click.stop="toggleLock(byte.nodeId)"
+              @click.stop="onByteClick(byte.nodeId)"
               @mouseover.stop="store.elementHighlighted(byte.nodeId)"
               @mouseleave.stop="store.elementHighlighted(-1)"
             >
@@ -465,6 +465,7 @@ const menuOpen = ref(false)
 
 const activatorRef = ref<HTMLDivElement | null>(null)
 const bytesRef = ref<HTMLDivElement | null>(null)
+const treeRef = ref<HTMLDivElement | null>(null)
 
 const formats = ['binary', 'base64', 'json', 'repository'] as const
 type ExportFormat = (typeof formats)[number]
@@ -598,6 +599,42 @@ const subHighlightedNodeAndDescendants = computed<Set<number>>(() => {
 
 function toggleLock(id: number): void {
   store.elementLocked(store.locked === id ? -1 : id)
+}
+
+async function revealInTree(id: number): Promise<void> {
+  store.expandPathTo(id)
+
+  // Two ticks: the first renders the expanded ancestors, the second lets
+  // TreeNode's onMounted auto-expand (nodes with <2 children) settle,
+  // so the layout is stable before we measure.
+  await nextTick()
+  await nextTick()
+
+  const container = treeRef.value
+  if (!container) return
+  const el = container.querySelector<HTMLElement>(`[data-tree-node-id="${id}"]`)
+  if (!el) return
+
+  const c = container.getBoundingClientRect()
+  const r = el.getBoundingClientRect()
+
+  // Vertical: center the node in the container
+  const top =
+    container.scrollTop + (r.top - c.top) - container.clientHeight / 2 + r.height / 2
+
+  // Horizontal: only move if the node is not fully visible
+  let left = container.scrollLeft
+  if (r.left < c.left || r.right > c.right) {
+    left = container.scrollLeft + (r.left - c.left) - 16
+  }
+
+  container.scrollTo({ top: Math.max(0, top), left: Math.max(0, left), behavior: 'smooth' })
+}
+
+function onByteClick(id: number): void {
+  const wasLocked = store.locked === id
+  toggleLock(id)
+  if (!wasLocked) void revealInTree(id)   // don't scroll when un-locking
 }
 
 // ─── Watchers ─────────────────────────────────────────────────────────────────

@@ -538,6 +538,26 @@ export const useTabsStore = defineStore('tabs', () => {
         }
     }
 
+    /**
+     * Expands exactly the ancestors of `id`, so the node becomes visible
+     */
+    function expandPathTo(id: number): void {
+        const tab = requireCurrentTab()
+        if (!tab) return
+
+        const seen = new Set<number>()
+        let current = nodesById.value.get(id)
+
+        // The root has parent === id (see findRoot in EditorView)
+        while (current && current.parent !== current.id && !seen.has(current.id)) {
+            seen.add(current.id)
+            const parentNode = nodesById.value.get(current.parent)
+            if (!parentNode) break
+            tab.expanded[parentNode.id] = true
+            current = parentNode
+        }
+    }
+
     function nodeMoved(
         context: NodeMovePayload,
         options: MutationOptions = {
@@ -847,6 +867,7 @@ export const useTabsStore = defineStore('tabs', () => {
         // Actions
         addTab,
         setAll,
+        expandPathTo,
         undo,
         redo
     }
