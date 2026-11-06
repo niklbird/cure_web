@@ -72,7 +72,13 @@ export const ASN1_TYPES = {
             BIT STRING values can be described as binary strings, hexadecimal strings, or using the identifiers from a BIT STRING's named bit list. 
             A BIT STRING containing all zero bits can be expressed using empty curly brackets. 
         `,
-        completions: [],
+        completions: [
+            "0.0.0.0/0",
+            "10.0.0.0/8",
+            "192.0.2.0/24",
+            "::/0",
+            "2001:db8::/32"
+        ],
         transform: {
             "regex": /^0x[0-9A-F]+$/i,
             "converter": (value) => {
@@ -117,7 +123,10 @@ export const ASN1_TYPES = {
             For example, it can be used to mark a currently empty space. 
             The NULL type has only one possible value, also called NULL. 
         `,
-        completions: [],
+        completions: [
+            "0001",   // AFI IPv4
+            "0002"    // AFI IPv6
+        ],
         transform: null
     },
     6: {
@@ -573,3 +582,53 @@ export const ASN1_TYPES = {
 
 // List of all time related ASN.1 types, so that a time picker can be shown in the UI
 export const TIME_TYPES = ["UTCTime", "GeneralizedTime", "DATE", "TIME-OF-DAY", "DATE-TIME", "DURATION"]
+
+// Well-known OIDs with names. Used by the node editor to show "oid - name" in the OID picker.
+// Mirrors rpki_oid_map() in cure_asn1/src/tree_parser.rs plus a few common X.509 ones.
+export const COMMON_OIDS = {
+    "1.2.840.113549.1.9.16.1.24": "RouteOriginAuthorization",
+    "1.2.840.113549.1.9.16.1.44": "iRouteOriginAuthorization",
+    "1.2.840.113549.1.9.16.1.26": "RpkiManifest",
+    "1.2.840.113549.1.9.16.1.46": "iRpkiManifest",
+    "1.2.840.113549.1.9.16.1.35": "RpkiGhostbusters",
+    "1.2.840.113549.1.9.16.1.49": "id-ct-ASPA",
+    "1.3.6.1.5.5.7.1.7": "id-pe-ipAddrBlocks",
+    "1.3.6.1.5.5.7.1.8": "id-pe-autonomousSysIds",
+    "1.3.6.1.5.5.7.3.30": "id-kp-bgpsec-router",
+    "1.3.6.1.5.5.7.14.2": "certificatePolicy",
+    "1.2.840.113549.1.1.1": "rsaEncryption",
+    "1.2.840.113549.1.1.11": "sha256WithRSAEncryption",
+    "1.2.840.113549.1.1.12": "sha384WithRSAEncryption",
+    "1.2.840.113549.1.1.13": "sha512WithRSAEncryption",
+    "1.2.840.10045.2.1": "ecPublicKey",
+    "1.2.840.10045.3.1.7": "prime256v1",
+    "1.2.840.10045.4.3.2": "ecdsa-with-SHA256",
+    "1.3.132.0.34": "secp384r1",
+    "2.16.840.1.101.3.4.2.1": "SHA256",
+    "1.2.840.113549.1.7.2": "signedData",
+    "2.5.4.3": "commonName",
+    "2.5.4.5": "serialNumber",
+    "2.5.4.6": "countryName",
+    "2.5.4.10": "organizationName",
+    "2.5.4.11": "organizationalUnitName",
+    "1.3.6.1.5.5.7.48.1": "id-ad-ocsp",
+    "1.3.6.1.5.5.7.48.2": "id-ad-caIssuers",
+    "1.3.6.1.5.5.7.48.5": "id-ad-caRepository",
+    "1.3.6.1.5.5.7.48.10": "id-ad-rpkiManifest",
+    "1.3.6.1.5.5.7.48.11": "id-ad-rpkiNotify",
+    "1.3.6.1.5.5.7.48.13": "id-ad-signedObject",
+    "2.5.29.14": "subjectKeyIdentifier",
+    "2.5.29.15": "keyUsage",
+    "2.5.29.17": "subjectAltName",
+    "2.5.29.19": "basicConstraints",
+    "2.5.29.20": "cRLNumber",
+    "2.5.29.31": "cRLDistributionPoints",
+    "2.5.29.32": "certificatePolicies",
+    "2.5.29.35": "authorityKeyIdentifier",
+    "1.3.6.1.5.5.7.1.1": "authorityInfoAccess",
+    "1.3.6.1.5.5.7.1.11": "subjectInfoAccess",
+    "1.2.840.113549.1.9.3": "contentType",
+    "1.2.840.113549.1.9.4": "messageDigest",
+    "1.2.840.113549.1.9.5": "signingTime",
+    "1.3.6.1.5.5.7.2.1": "PKIX CPS pointer qualifier"
+}
