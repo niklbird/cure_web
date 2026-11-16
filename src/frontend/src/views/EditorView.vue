@@ -640,6 +640,11 @@ function onByteClick(id: number): void {
 // ─── Watchers ─────────────────────────────────────────────────────────────────
 
 watch(
+  [() => store.currentTab, () => store.tree, () => store.name, () => store.tabs.length],
+  syncUrlWithState
+)
+
+watch(
   () => store.highlighted,
   (id) => {
     if (id === null || id === undefined || id === -1) return
@@ -699,22 +704,102 @@ function uint8ToBase64(uint8Array: Uint8Array | number[]): string {
   return result
 }
 
-function generateShareUrl(): string {
+// ─── Share URL / URL sync ─────────────────────────────────────────────────────
+
+function buildShareParams(): string {
   if (!store.state) return ''
   try {
-    const base64Data = store.state.export_base64()
-    const urlSafeBase64 = base64Data
+    const urlSafeBase64 = store.state
+      .export_base64()
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=+$/, '')
-
-    const baseUrl = window.location.origin + window.location.pathname
-    const name = encodeURIComponent(store.name || 'Shared')
-    return `${baseUrl}?data=${urlSafeBase64}&name=${name}`
+    return `data=${urlSafeBase64}&name=${encodeURIComponent(store.name || 'Shared')}`
   } catch (e) {
-    console.error('Error generating share URL:', e)
+    console.error('Error generating share params:', e)
     return ''
   }
+}
+
+function generateShareUrl(): string {
+  const params = buildShareParams()
+  if (!params) return ''
+  return `${window.location.origin}${window.location.pathname}#${params}`
+}
+
+/** Reads shared data from the hash (new) or the query string (old share links). */
+function readSharedParams(): URLSearchParams | null {
+  const fromHash = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+  if (fromHash.get('data')) return fromHash
+
+  const fromQuery = new URLSearchParams(window.location.search)
+  if (fromQuery.get('data')) return fromQuery
+
+  return null
+}
+
+function loadFromUrl(): boolean {
+  const params = readSharedParams()
+  const data = params?.get('data')
+  if (!params || !data) return false
+
+  // Don't re-import what is already open (e.g. back navigation, remount)
+  const current = buildShareParams()
+  if (current && current.startsWith(`data=${data}`)) return false
+
+  try {
+    let base64Data = data.replace(/-/g, '+').replace(/_/g, '/')
+    const padding = base64Data.length % 4
+    if (padding) base64Data += '='.repeat(4 - padding)
+
+    // URLSearchParams.get() already decodes, so no decodeURIComponent needed
+    const tabName = params.get('name') || 'Shared Object'
+    store.addTab(tabName)
+
+    store.stateSet({
+      tab: store.currentTab,
+      data: base64Data,
+      type: 'base64'
+    })
+
+    // URL is intentionally NOT cleared anymore – syncUrlWithState keeps it up to date
+    return true
+  } catch (e: any) {
+    console.error('Error loading data from URL:', e)
+    alert('Failed to load the shared object: ' + (e.message ?? 'Unknown error'))
+  }
+  return false
+}
+
+let urlSyncTimer: ReturnType<typeof setTimeout> | null = null
+
+function syncUrlWithState(): void {
+  if (urlSyncTimer) clearTimeout(urlSyncTimer)
+
+  urlSyncTimer = setTimeout(() => {
+    let newUrl: string | null = null
+
+    if (store.tabs.length === 0) {
+      // No tabs at all -> clean URL
+      newUrl = window.location.pathname
+    } else if (store.tree.length > 0) {
+      const params = buildShareParams()
+      if (params) newUrl = `${window.location.pathname}#${params}`
+    }
+    // Tab with parse error / empty tree: leave the URL untouched,
+    // so the user can still copy the link of the broken input.
+
+    if (newUrl !== null) {
+      // Pass history.state through so vue-router's state is preserved
+      window.history.replaceState(window.history.state, '', newUrl)
+    }
+  }, 300)
+}
+
+function handleHashChange(): void {
+  // Fires when someone pastes a different share link into the address bar
+  // of an already open tab (replaceState itself does NOT trigger this event).
+  loadFromUrl()
 }
 
 function openShareDialog(): void {
@@ -734,36 +819,6 @@ async function copyShareUrl(): Promise<void> {
   } catch (e) {
     console.error('Failed to copy URL:', e)
   }
-}
-
-function loadFromUrl(): boolean {
-  const urlParams = new URLSearchParams(window.location.search)
-  const data = urlParams.get('data')
-  const name = urlParams.get('name')
-
-  if (data) {
-    try {
-      let base64Data = data.replace(/-/g, '+').replace(/_/g, '/')
-      const padding = base64Data.length % 4
-      if (padding) base64Data += '='.repeat(4 - padding)
-
-      const tabName = name ? decodeURIComponent(name) : 'Shared Object'
-      store.addTab(tabName)
-
-      store.stateSet({
-        tab: store.currentTab,
-        data: base64Data,
-        type: 'base64'
-      })
-
-      window.history.replaceState({}, document.title, window.location.pathname)
-      return true
-    } catch (e: any) {
-      console.error('Error loading data from URL:', e)
-      alert('Failed to load the shared object: ' + (e.message ?? 'Unknown error'))
-    }
-  }
-  return false
 }
 
 async function runTestCase(): Promise<void> {
@@ -970,6 +1025,7 @@ async function probeBackend(): Promise<void> {
 onMounted(() => {
   document.title = 'Live ASN.1 Editor & Parser | DERP'
   window.addEventListener('keydown', handleKeydown)
+  window.addEventListener('hashchange', handleHashChange)   // NEU
   probeBackend()
 
   nextTick(() => {
@@ -991,6 +1047,8 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleKeydown)
+  window.removeEventListener('hashchange', handleHashChange)   // NEU
+  if (urlSyncTimer) clearTimeout(urlSyncTimer)                 // NEU
 })
 
 onUpdated(() => {
