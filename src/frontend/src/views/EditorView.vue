@@ -21,7 +21,7 @@
   </v-overlay>
 
   <v-overlay v-model="showExtensionDialog">
-    <ExtensionDialog @close="showExtensionDialog = false" />
+    <ExtensionDialog @close="showExtensionDialog = false" @added="onNodeAdded"/>
   </v-overlay>
 
   <v-overlay v-model="showReports">
@@ -328,7 +328,7 @@
         </div>
 
         <div class="asn-tree-wrapper">
-          <div class="asn-tree">
+          <div class="asn-tree" ref="treeRef">
             <TreeNodeComponent
               v-if="store.tree.length > 0"
               :node="findRoot()"
@@ -394,7 +394,7 @@
                 subHighlightedNodeAndDescendants.has(byte.nodeId) ? 'sub-highlighted' : ''
               ]"
               :data-node-id="byte.nodeId"
-              @click.stop="toggleLock(byte.nodeId)"
+              @click.stop="onByteClick(byte.nodeId)"
               @mouseover.stop="store.elementHighlighted(byte.nodeId)"
               @mouseleave.stop="store.elementHighlighted(-1)"
             >
@@ -522,6 +522,34 @@ watch(() => store.parseError, async (e) => {
 })
 
 // ─── Computed ─────────────────────────────────────────────────────────────────
+
+const treeRef = ref<HTMLDivElement | null>(null)
+
+async function revealInTree(id: number): Promise<void> {
+  store.expandPathTo(id)
+
+  const container = treeRef.value
+  if (!container) return
+
+  // Wait until the node is actually rendered (max ~10 frames)
+  let el: HTMLElement | null = null
+  for (let i = 0; i < 10 && !el; i++) {
+    await nextTick()
+    el = container.querySelector<HTMLElement>(`[data-tree-node-id="${id}"]`)
+    if (!el) await new Promise(requestAnimationFrame)
+  }
+  if (!el) {
+    console.warn('revealInTree: node element not found for id', id)
+    return
+  }
+
+  const c = container.getBoundingClientRect()
+  const r = el.getBoundingClientRect()
+  const top = container.scrollTop + (r.top - c.top) - container.clientHeight / 2 + r.height / 2
+  let left = container.scrollLeft
+  if (r.left < c.left || r.right > c.right) left = container.scrollLeft + (r.left - c.left) - 16
+  container.scrollTo({ top: Math.max(0, top), left: Math.max(0, left), behavior: 'smooth' })
+}
 
 const objectType = computed(() => store.state?.infer_object_type() ?? '')
 
@@ -801,6 +829,13 @@ function duplicateNode(node: TreeNode | null): void {
   })
 }
 
+function onNodeAdded(id: number) {
+  console.log('onNodeAdded', id, typeof store.expandPathTo) //debug log
+  store.elementHighlighted(id)
+  store.elementLocked(id)
+  void revealInTree(id)   
+}
+
 function deleteNode(): void {
   if (!activeNode.value) return
   if (confirm('Are you sure you want to delete this node?')) {
@@ -902,6 +937,12 @@ function handleKeydown(event: KeyboardEvent): void {
   if (event.ctrlKey && event.key === 'z') store.undo()
   if (event.ctrlKey && event.key === 'y') store.redo()
   if (event.key === 'Escape') store.elementLocked(-1)
+}
+
+function onByteClick(id: number): void {
+  const wasLocked = store.locked === id
+  toggleLock(id)
+  if (!wasLocked) void revealInTree(id)
 }
 
 async function copyDER(): Promise<void> {

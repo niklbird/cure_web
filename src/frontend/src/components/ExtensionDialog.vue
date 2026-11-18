@@ -69,7 +69,7 @@ import { EXTENSIONS, wrapExtension } from '@/utils/extensions'
 
 const { mobile: isMobile } = useDisplay()
 const store = useTabsStore()
-const emit = defineEmits<{ close: [] }>()
+const emit = defineEmits<{ close: []; added: [id: number] }>()
 
 const selectedId = ref<string | null>(null)
 const critical = ref(false)
@@ -88,7 +88,7 @@ function normalizeLabel(s: unknown): string {
   return String(s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '')
 }
 
-// ↓↓↓ This is the "Add handler" from step 4 ↓↓↓
+// add Extension options
 function addExtension(): void {
   errorMsg.value = ''
   if (!def.value) return
@@ -120,7 +120,8 @@ function addExtension(): void {
   }
 
   try {
-    store.nodeAddedDer({ tab: store.currentTab, parent: ext.id, der })
+    const id = store.nodeAddedDer({ tab: store.currentTab, parent:ext.id, der })
+    if (id !== undefined) emit('added', id)
     emit('close')
   } catch (e) {
     errorMsg.value = String(e)

@@ -383,7 +383,7 @@ impl State{
     }
 
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
-    pub fn add_der(&mut self, parent: usize, der: Vec<u8>, index: Option<usize>) -> Result<(), String> {
+    pub fn add_der(&mut self, parent: usize, der: Vec<u8>, index: Option<usize>) -> Result<usize, String> {
         if self.tree.tokens.get(&parent).is_none() {
             return Err("Invalid parent".to_string());
         }
@@ -394,7 +394,7 @@ impl State{
         let id = self.insert_element(tag, content, parent, index)?;
         self.tree.taint_parents(id);
         self.tree.fix_sizes(true);
-        Ok(())
+        Ok(id)
     }
 
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]

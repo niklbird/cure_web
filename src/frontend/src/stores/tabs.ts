@@ -502,14 +502,19 @@ export const useTabsStore = defineStore('tabs', () => {
     function nodeAddedDer(
         context: NodeAddDerPayload,
         options: MutationOptions = { recordHistory: true, advanceHistory: true, refreshTree: true }
-    ): void {
+    ): number | undefined {
         const tab = findTab(context.tab)
-        if (!tab?.state) return
+        if (!tab?.state) return undefined
 
-        // Call first, so a failed insert doesn't leave a bogus history entry
-        tab.state.add_der(context.parent, new Uint8Array(context.der), context.index ?? undefined)
+        const id = tab.state.add_der(context.parent, new Uint8Array(context.der), context.index ?? undefined)
         commitMutation(tab, 'nodeAddedDer', context, options)
         finishMutation(tab, options)
+        return id
+
+        // Call first, so a failed insert doesn't leave a bogus history entry
+        //tab.state.add_der(context.parent, new Uint8Array(context.der), context.index ?? undefined)
+        //commitMutation(tab, 'nodeAddedDer', context, options)
+        //finishMutation(tab, options)
     }
 
     function positionAdded(context: {
@@ -535,6 +540,26 @@ export const useTabsStore = defineStore('tabs', () => {
 
         if (tab) {
             tab.expanded[context.id] = context.expanded
+        }
+    }
+
+    /**
+     * Expands the ancestors of `id` so the node becomes visible
+     */
+    function expandPathTo(id: number): void {
+        const tab = requireCurrentTab()
+        if (!tab) return
+
+        const seen = new Set<number>()
+        let current = nodesById.value.get(id)
+
+        // The root has parent === id
+        while (current && current.parent !== current.id && !seen.has(current.id)) {
+            seen.add(current.id)
+            const parentNode = nodesById.value.get(current.parent)
+            if (!parentNode) break
+            tab.expanded[parentNode.id] = true
+            current = parentNode
         }
     }
 
@@ -847,6 +872,7 @@ export const useTabsStore = defineStore('tabs', () => {
         // Actions
         addTab,
         setAll,
+        expandPathTo,
         undo,
         redo
     }
