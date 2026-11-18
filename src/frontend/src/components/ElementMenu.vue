@@ -4,6 +4,7 @@
     :max-height="isMobile ? '90vh' : '70vh'"
     class="d-flex flex-column"
   >
+    <!-- Date/time picker overlay (unchanged behaviour) -->
     <v-overlay v-model="pick" class="d-flex justify-center align-center" persistent>
       <v-card :width="isMobile ? '90vw' : 'auto'">
         <v-card-text>
@@ -24,15 +25,20 @@
       </v-card>
     </v-overlay>
 
-    <v-card-title class="text-center flex-0">
-      {{ props.node ? 'Edit Node' : 'Add Node' }}
+    <v-card-title class="d-flex align-center justify-center flex-0" style="gap: 12px">
+      <span>{{ props.node ? 'Edit Node' : 'Add Node' }}</span>
+      <v-chip v-if="tag != null" color="primary" variant="tonal" size="small" label>
+        {{ typeLabel }}
+      </v-chip>
     </v-card-title>
 
     <v-divider />
 
     <v-card-text class="flex-grow-1" style="overflow-y: auto;">
       <v-form @keydown.enter.prevent="props.node ? changeNode() : addNode()">
+        <!-- When adding a node the type is the first thing the user has to choose -->
         <v-select
+          v-if="!props.node"
           v-model="tag"
           label="ASN.1 TYPE"
           :items="asn1TypesForSelect"
@@ -41,60 +47,140 @@
           density="compact"
         />
 
-        <v-text-field
-          v-model="label"
-          label="Label"
-          placeholder="Label"
-          density="compact"
-        />
+        <!-- ───────── CONTENT (primary action) ───────── -->
+        <template v-if="hasContent">
+          <div class="text-subtitle-2 mb-1">Content</div>
 
-        <v-text-field
-          v-if="props.node != null"
-          v-model="length"
-          label="Length"
-          placeholder="Length"
-          density="compact"
-        />
+          <!-- BOOLEAN mask -->
+          <v-btn-toggle
+            v-if="isBoolean"
+            v-model="content"
+            mandatory
+            color="primary"
+            variant="outlined"
+            density="comfortable"
+            class="mb-2"
+          >
+            <v-btn value="true">TRUE</v-btn>
+            <v-btn value="false">FALSE</v-btn>
+          </v-btn-toggle>
 
-        <v-row v-if="tag != null && tag != 48 && tag != 49" class="align-center">
-          <v-col>
-            <v-text-field
-              v-if="!hasCompletions"
-              v-model="content"
-              label="Content"
-              :placeholder="currentType?.example ?? ''"
-              density="compact"
-              hide-details
-            />
-            <AutoComplete
-              v-else
-              v-model="content"
-              label="Content"
-              :completions="currentCompletions"
-            />
-          </v-col>
-          <v-col cols="auto" class="d-flex">
-            <v-btn
-              v-if="isTimeType"
-              icon="mdi-calendar"
-              @click="pick = true"
-              variant="text"
+          <!-- Everything else -->
+          <v-row v-else class="align-center" no-gutters>
+            <v-col>
+              <!-- Large preset list (e.g. OIDs): editable field with suggestions -->
+              <AutoComplete
+                v-if="hasCompletions"
+                v-model="content"
+                label="Content"
+                :completions="currentCompletions"
+              />
+              <v-text-field
+                v-else-if="isInteger"
+                v-model="content"
+                label="Content"
+                :placeholder="currentType?.example ?? '0'"
+                inputmode="numeric"
+                variant="outlined"
+                density="comfortable"
+                autofocus
+                hide-details
+              />
+              <v-text-field
+                v-else
+                v-model="content"
+                label="Content"
+                :placeholder="currentType?.example ?? ''"
+                variant="outlined"
+                density="comfortable"
+                autofocus
+                hide-details
+              />
+            </v-col>
+            <v-col cols="auto" class="d-flex ml-2">
+              <v-btn
+                v-if="isTimeType"
+                icon="mdi-calendar"
+                @click="pick = true"
+                variant="text"
+                size="small"
+              />
+              <v-btn
+                v-if="isTimeType"
+                icon="mdi-clock-outline"
+                variant="text"
+                size="small"
+                title="Use current time"
+                @click="setNow"
+              />
+              <v-btn icon variant="text" size="small">
+                <v-icon>mdi-help-circle</v-icon>
+                <v-tooltip activator="parent" location="bottom">
+                  <span
+                    v-for="(chunk, index) in (currentType?.description ?? '').split('\n')"
+                    :key="index"
+                  >
+                    {{ chunk }}<br />
+                  </span>
+                </v-tooltip>
+              </v-btn>
+            </v-col>
+          </v-row>
+
+          <!-- Quick presets for short lists -->
+          <div v-if="quickPresets.length > 0" class="mt-2 d-flex flex-wrap" style="gap: 6px">
+            <v-chip
+              v-for="p in quickPresets"
+              :key="p"
               size="small"
-            />
+              variant="outlined"
+              color="primary"
+              @click="content = p"
+            >
+              {{ p }}
+            </v-chip>
+          </div>
 
-            <v-btn icon variant="text" size="small">
-              <v-icon>mdi-help-circle</v-icon>
-              <v-tooltip activator="parent" location="bottom">
-                <span
-                  v-for="(chunk, index) in (currentType?.description ?? '').split('\n')"
-                  :key="index"
-                >
-                  {{ chunk }}<br />
-                </span>
-              </v-tooltip>
-            </v-btn>
-          </v-col>
-        </v-row>
+          <div v-if="isOid" class="text-caption text-medium-emphasis mt-1">
+            Type a dotted OID, or pick a known one from the list
+            ({{ oidCompletions.length }} presets).
+          </div>
+        </template>
+
+        <div v-else-if="tag != null" class="text-body-2 text-medium-emphasis">
+          {{ noContentHint }}
+        </div>
+
+        <!--advanced node edit options-->
+        <v-divider class="my-4" />
+        <div class="text-subtitle-2 mb-2">
+          Advanced <span class="text-caption text-medium-emphasis">(label<span v-if="props.node">, type, length</span>)</span>
+        </div>
+          <v-select
+            v-if="props.node"
+            v-model="tag"
+            label="ASN.1 TYPE"
+            :items="asn1TypesForSelect"
+            item-title="title"
+            item-value="value"
+            density="compact"
+          />
+
+          <v-text-field
+            v-model="label"
+            label="Label"
+            placeholder="Label"
+            density="compact"
+          />
+
+          <v-text-field
+            v-if="props.node != null"
+            v-model="length"
+            label="Length"
+            placeholder="Length"
+            density="compact"
+            hide-details
+          />
       </v-form>
     </v-card-text>
 
@@ -110,9 +196,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import moment from 'moment'
-import { ASN1_TYPES, TIME_TYPES } from '@/utils/types'
+import { ASN1_TYPES, TIME_TYPES, COMMON_OIDS } from '@/utils/types'
 import AutoComplete from '@/components/AutoComplete.vue'
 import { useDisplay } from 'vuetify'
 import { useTabsStore } from '@/stores/tabs'
@@ -132,7 +218,10 @@ const emit = defineEmits<{
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
-const tag = ref<number | string | null>(props.node ? props.node.tag[0] : null)
+// NOTE: the v-select items use the object keys of ASN1_TYPES (strings), so the
+// model must be a string too, otherwise "2" !== 2 and the select shows the raw
+// number instead of the type name.
+const tag = ref<string | null>(props.node ? String(props.node.tag[0]) : null)
 const label = ref<string | null>(props.node ? props.node.label : null)
 const length = ref<any>(props.node ? props.node.length[0] : null)
 const content = ref<string | null>(props.node ? props.node.content[2] : null)
@@ -145,29 +234,71 @@ const oidCompletions = ref<string[]>([])
 
 const types = ASN1_TYPES as Record<number | string, any>
 const timeTypes = TIME_TYPES as string[]
+const commonOids = COMMON_OIDS as Record<string, string>
+
+const numericTag = computed<number | null>(() => (tag.value == null ? null : Number(tag.value)))
 
 const asn1TypesForSelect = computed(() => {
   return Object.entries(types).map(([key, value]) => ({
-    title: value.name as string,
+    title: `${value.name as string} (0x${Number(key).toString(16).padStart(2, '0').toUpperCase()})`,
     value: key
   }))
 })
 
 const currentType = computed(() => {
   if (tag.value == null) return null
-  return types[tag.value as number] ?? null
+  return types[tag.value] ?? null
+})
+
+/** Human readable type name, e.g. "INTEGER (0x02)". Falls back to the node's own display string. */
+const typeLabel = computed(() => {
+  if (numericTag.value == null) return ''
+  const hex = '0x' + numericTag.value.toString(16).padStart(2, '0').toUpperCase()
+  const name = currentType.value?.name
+  if (name) return `${name} (${hex})`
+  if (props.node && Number(props.node.tag[0]) === numericTag.value && props.node.tag[1]) {
+    return `${props.node.tag[1]} (${hex})`
+  }
+  return `Unknown (${hex})`
+})
+
+const isBoolean = computed(() => numericTag.value === 1)
+const isInteger = computed(() => numericTag.value === 2 || numericTag.value === 10)
+const isOid = computed(() => numericTag.value === 6)
+
+/** Constructed types (SEQUENCE / SET), NULL and context tags carry no direct content. */
+const hasContent = computed(() => {
+  const t = numericTag.value
+  if (t == null) return false
+  if (t === 48 || t === 49 || t === 5) return false
+  if (t >= 0xa0 && t <= 0xa6) return false
+  return true
+})
+
+const noContentHint = computed(() => {
+  const t = numericTag.value
+  if (t === 5) return 'NULL has no content.'
+  return 'This is a container type. Edit its children, or use "Add child" from the context menu.'
 })
 
 const hasCompletions = computed(() => {
   if (tag.value == null) return false
-  if (Number(tag.value) === 6) return oidCompletions.value.length > 0
-  return (currentType.value?.completions?.length ?? 0) > 0
+  if (isOid.value) return oidCompletions.value.length > 0
+  const c = currentType.value?.completions ?? []
+  return c.length > 8
 })
 
 const currentCompletions = computed<string[]>(() => {
   if (tag.value == null) return []
-  if (Number(tag.value) === 6) return oidCompletions.value
+  if (isOid.value) return oidCompletions.value
   return currentType.value?.completions ?? []
+})
+
+/** Short preset lists are shown as clickable chips instead of an autocomplete. */
+const quickPresets = computed<string[]>(() => {
+  if (isOid.value || isBoolean.value) return []
+  const c: string[] = currentType.value?.completions ?? []
+  return c.length > 0 && c.length <= 8 ? c : []
 })
 
 const isTimeType = computed(() => {
@@ -175,34 +306,50 @@ const isTimeType = computed(() => {
   return timeTypes.includes(currentType.value.name)
 })
 
+// ─── Watchers ─────────────────────────────────────────────────────────────────
+
+watch(tag, () => {
+  // Make sure a BOOLEAN always has a valid value selected
+  if (isBoolean.value && content.value !== 'true' && content.value !== 'false') {
+    content.value = 'true'
+  }
+})
+
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 
 onMounted(() => {
   loadOidCompletions()
+  if (isBoolean.value && content.value !== 'true' && content.value !== 'false') {
+    content.value = 'true'
+  }
 })
 
 // ─── Methods ──────────────────────────────────────────────────────────────────
 
+/**
+ * Builds the OID preset list: all OIDs known to the Rust backend plus the named
+ * ones from COMMON_OIDS, formatted as "oid - name" where a name is known.
+ */
 function loadOidCompletions(): void {
+  const all = new Set<string>(Object.keys(commonOids))
+
   try {
     if (store.state) {
-      const oidsJson = store.state.get_all_oids()
-      const oids = JSON.parse(oidsJson)
+      const oids = JSON.parse(store.state.get_all_oids())
       if (Array.isArray(oids)) {
-        oidCompletions.value = oids.map((oid: any) => {
-          if (typeof oid === 'string') return oid
-          if (typeof oid === 'object' && oid !== null) {
-            if (oid.name && oid.oid) return `${oid.oid} - ${oid.name}`
-            return oid.oid ?? String(oid)
-          }
-          return String(oid)
-        })
+        for (const oid of oids) {
+          if (typeof oid === 'string') all.add(oid)
+          else if (oid && typeof oid === 'object' && oid.oid) all.add(String(oid.oid))
+        }
       }
     }
   } catch (e) {
-    console.warn('Could not load OID completions:', e)
-    oidCompletions.value = []
+    console.warn('Could not load OID completions from backend:', e)
   }
+
+  oidCompletions.value = Array.from(all)
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+    .map(oid => (commonOids[oid] ? `${oid} - ${commonOids[oid]}` : oid))
 }
 
 function translate(value: unknown): string {
@@ -224,6 +371,12 @@ function translate(value: unknown): string {
     .map(b => b.toString(16).padStart(2, '0'))
     .join('')
   return '0x' + hex
+}
+
+function setNow(): void {
+  date.value = new Date()
+  time.value = new Date().toLocaleTimeString('en-GB')
+  confirmTime()
 }
 
 function confirmTime(): void {
@@ -274,12 +427,18 @@ function verifyContent(): boolean {
   if (content.value === '' || content.value === null) return true
   if (tag.value === null) return false
 
+  // Types without direct content never need validation
+  if (!hasContent.value) return true
+
+  // Boolean toggle can only produce valid values
+  if (isBoolean.value) return true
+
   // For OIDs, extract just the OID part if user selected a formatted completion
-  if (Number(tag.value) === 6 && content.value?.includes(' - ')) {
+  if (isOid.value && content.value?.includes(' - ')) {
     content.value = content.value.split(' - ')[0].trim()
   }
 
-  const typeEntry = types[tag.value as number]
+  const typeEntry = types[tag.value]
   if (!typeEntry) return false
 
   if (typeEntry.rules(content.value)) return true
@@ -305,9 +464,9 @@ function addNode(): void {
   store.nodeAdded({
     tab: store.currentTab,
     parent: props.parent ?? 0,
-    tag: tag.value,
+    tag: numericTag.value,
     label: label.value,
-    content: content.value ?? ''
+    content: hasContent.value ? (content.value ?? '') : ''
   })
   emit('close')
 }
@@ -319,7 +478,7 @@ function changeNode(): void {
   store.nodeChanged({
     tab: store.currentTab,
     id: props.node.id,
-    tag: tag.value,
+    tag: numericTag.value,
     length: length.value !== props.node.length[0] ? length.value : null,
     content: content.value
   })
