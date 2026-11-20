@@ -244,6 +244,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useTabsStore } from '@/stores/tabs'
+import { deriveTabName } from '@/utils/naming'
 
 interface ExampleDef {
   type: string
@@ -372,7 +373,7 @@ function loadExample(type: string): void {
   emit('upload')
 }
 
-function open(newTab: boolean): void {
+async function open(newTab: boolean): Promise<void> {
   if (!data.value) {
     dialog.value = false
     return
@@ -380,19 +381,27 @@ function open(newTab: boolean): void {
 
   dialog.value = false
 
+  // Capture before clearFile() resets it
+  const providedName = fileName.value
+
   if (newTab) {
-    store.addTab(fileName.value || 'Unnamed')
+    store.addTab(providedName || 'Unnamed')
   }
+  const tabId = store.currentTab
 
   try {
     store.stateSet({
-      tab: store.currentTab,
+      tab: tabId,
       data: data.value,
       type: dataType.value
     })
 
     clearFile()
     emit('upload')
+
+    // Name: file name for uploads, otherwise derived from content
+    const name = providedName || (await deriveTabName(store))
+    if (name && tabId) store.tabRenamed(name, tabId)
   } catch (error) {
     console.error('Failed to load content:', error)
     showError(getUserFriendlyError(error))
