@@ -326,12 +326,9 @@ export const useTabsStore = defineStore('tabs', () => {
         tabs.value.unshift(createDefaultTab(context.id, context.name))
     }
 
-    function tabRenamed(newName: string): void {
-        const tab = requireCurrentTab()
-
-        if (tab) {
-            tab.name = newName
-        }
+    function tabRenamed(newName: string, id: string | null = null): void {
+        const tab = id ? findTab(id) : requireCurrentTab()
+        if (tab) tab.name = newName
     }
 
     function tabRemoved(id: string): void {

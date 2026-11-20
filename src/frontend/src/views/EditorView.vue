@@ -429,6 +429,7 @@ import ExtensionDialog from '@/components/ExtensionDialog.vue'
 
 import type { Tab } from '@/stores/tabs'
 import type { TreeNode, CureReport, ContextMenuItem } from '@/types/editor'
+import { deriveTabName } from '@/utils/naming'
 
 
 // ─── Setup ────────────────────────────────────────────────────────────────────
@@ -789,6 +790,10 @@ function loadFromUrl(): boolean {
       data: base64Data,
       type: 'base64'
     })
+    if (!name) {
+      const tabId = store.currentTab
+      deriveTabName(store).then(n => { if (n && tabId) store.tabRenamed(n, tabId) })
+    }
 
     // URL is intentionally NOT cleared anymore – syncUrlWithState keeps it up to date
     return true
