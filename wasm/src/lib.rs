@@ -4,6 +4,8 @@ use regex::Regex;
 use tar::Builder;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
+#[path = "verify.rs"]
+pub mod verify;
 use cure_asn1::{labeling::Label, labels::LabelName, rpki::rpki::ObjectType, tree_parser::{self, Asn1ObjType, Tree, TypeTag}};
 use std::{fs, io::Cursor};
 
@@ -499,6 +501,20 @@ impl State{
             .infer_own_type()
             .map(|t| t.filename_extension().to_string())
             .unwrap_or_default()
+    }
+
+    /// Verify the loaded object. `chain` holds certificates and CRLs, each entry PEM
+    /// (several blocks allowed), base64 or hex. `now_ms` is the reference time in ms since
+    /// the epoch. Returns the report as JSON; every check may reference a node id.
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
+    pub fn verify(&self, chain: Vec<String>, now_ms: f64) -> Result<String, String> {
+        let mut der = vec![];
+        for (i, item) in chain.iter().enumerate() {
+            let decoded = verify::decode_chain_input(item.as_bytes()).map_err(|e| format!("Chain item {}: {}", i + 1, e))?;
+            der.extend(decoded);
+        }
+        let report = verify::verify_tree(&self.tree, &der, now_ms as i64);
+        serde_json::to_string(&report).map_err(|e| e.to_string())
     }
 
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]

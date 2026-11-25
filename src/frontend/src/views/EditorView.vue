@@ -24,6 +24,10 @@
     <ExtensionDialog @close="showExtensionDialog = false" @added="onNodeAdded"/>
   </v-overlay>
 
+  <v-overlay v-model="showVerifyDialog">
+    <VerifyDialog @close="showVerifyDialog = false" @reveal="revealCheckNode" />
+  </v-overlay>
+
   <v-overlay v-model="showReports">
     <v-card
       :width="isMobile ? '95vw' : '70vw'"
@@ -303,6 +307,16 @@
             variant="text"
             size="small"
             :disabled="store.tree.length === 0"
+            @click="showVerifyDialog = true"
+          >
+            <v-icon color="primary" start size="18">mdi-shield-check-outline</v-icon>
+            Verify
+          </v-btn>
+
+          <v-btn
+            variant="text"
+            size="small"
+            :disabled="store.tree.length === 0"
             @click="store.setAll(!store.anyExpanded)"
           >
             <v-icon
@@ -426,6 +440,7 @@ import ElementMenu from '@/components/ElementMenu.vue'
 import MenuComponent from '@/components/MenuComponent.vue'
 import KeyLoader from '@/components/KeyLoader.vue'
 import ExtensionDialog from '@/components/ExtensionDialog.vue'
+import VerifyDialog from '@/components/VerifyDialog.vue'
 
 import type { Tab } from '@/stores/tabs'
 import type { TreeNode, CureReport, ContextMenuItem } from '@/types/editor'
@@ -462,6 +477,7 @@ const shareUrlTooLong = ref(false)
 const copied = ref(false)
 const showKeyLoader = ref(false)
 const showExtensionDialog = ref(false)
+const showVerifyDialog = ref(false)
 const menuOpen = ref(false)
 
 const activatorRef = ref<HTMLDivElement | null>(null)
@@ -658,6 +674,12 @@ async function revealInTree(id: number): Promise<void> {
   }
 
   container.scrollTo({ top: Math.max(0, top), left: Math.max(0, left), behavior: 'smooth' })
+}
+
+function revealCheckNode(id: number): void {
+  showVerifyDialog.value = false
+  store.elementLocked(id)
+  void revealInTree(id)
 }
 
 function onByteClick(id: number): void {
